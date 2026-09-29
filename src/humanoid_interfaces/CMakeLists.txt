@@ -23,7 +23,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ImuMsg.msg"
   "msg/Master2IkMsg.msg"
   "msg/Tune2IkMsg.msg"
-  "msg/ZmpMsg.msg"
+  "msg/ZmpMsg.msg" "msg/MotionOperator.msg"
 
   
 
