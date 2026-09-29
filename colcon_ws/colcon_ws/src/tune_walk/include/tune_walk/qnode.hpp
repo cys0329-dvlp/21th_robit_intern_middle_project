@@ -25,11 +25,11 @@
 #include <cmath>
 #include <string>
 
-#include "irc_humanoid_interfaces/msg/tune2_ik_msg.hpp"
-#include "irc_humanoid_interfaces/msg/imu_msg.hpp"
-#include "irc_humanoid_interfaces/msg/zmp_msg.hpp"
-#include "irc_humanoid_interfaces/msg/ik_pattern_msg.hpp"
-#include "irc_humanoid_interfaces/msg/ik_ltc_msg.hpp"
+#include "humanoid_interfaces/msg/tune2_ik_msg.hpp"
+#include "humanoid_interfaces/msg/imu_msg.hpp"
+#include "humanoid_interfaces/msg/zmp_msg.hpp"
+#include "humanoid_interfaces/msg/ik_pattern_msg.hpp"
+#include "humanoid_interfaces/msg/ik_ltc_msg.hpp"
 
 /*****************************************************************************
 ** Class
@@ -45,22 +45,22 @@ class QNode : public QThread
 public:
   QNode();
   ~QNode();
-  rclcpp::Publisher<irc_humanoid_interfaces::msg::Tune2IkMsg>::SharedPtr tune2walk_Pub;
+  rclcpp::Publisher<humanoid_interfaces::msg::Tune2IkMsg>::SharedPtr tune2walk_Pub;
 
-  irc_humanoid_interfaces::msg::IkLTCMsg Landing_info;
+  humanoid_interfaces::msg::IkLTCMsg Landing_info;
 
-  void imuCallback(const irc_humanoid_interfaces::msg::ImuMsg::SharedPtr msg);
-  void zmpCallback(const irc_humanoid_interfaces::msg::ZmpMsg::SharedPtr msg);
-  void LandingCallback(const irc_humanoid_interfaces::msg::IkLTCMsg::SharedPtr msg);
+  void imuCallback(const humanoid_interfaces::msg::ImuMsg::SharedPtr msg);
+  void zmpCallback(const humanoid_interfaces::msg::ZmpMsg::SharedPtr msg);
+  void LandingCallback(const humanoid_interfaces::msg::IkLTCMsg::SharedPtr msg);
 
 protected:
   void run();
 
 private:
   std::shared_ptr<rclcpp::Node> node;
-  std::shared_ptr<rclcpp::Subscription<irc_humanoid_interfaces::msg::ImuMsg>> imuSub;
-  std::shared_ptr<rclcpp::Subscription<irc_humanoid_interfaces::msg::ZmpMsg>> zmpSub;
-  std::shared_ptr<rclcpp::Subscription<irc_humanoid_interfaces::msg::IkLTCMsg>> LandingSub;
+  std::shared_ptr<rclcpp::Subscription<humanoid_interfaces::msg::ImuMsg>> imuSub;
+  std::shared_ptr<rclcpp::Subscription<humanoid_interfaces::msg::ZmpMsg>> zmpSub;
+  std::shared_ptr<rclcpp::Subscription<humanoid_interfaces::msg::IkLTCMsg>> LandingSub;
   
 
 Q_SIGNALS:

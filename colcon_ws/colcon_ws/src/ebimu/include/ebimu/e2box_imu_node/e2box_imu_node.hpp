@@ -22,7 +22,8 @@
 
 #include <sensor_msgs/msg/imu.hpp>
 #include "humanoid_interfaces/msg/imu_msg.hpp"
-#include "vision_interfaces/msg/pan_angle_compensation.hpp"
+// TODO(vision_interfaces): 패키지 만든 후 주석 해제
+// #include "vision_interfaces/msg/pan_angle_compensation.hpp"
 
 //extern double roll, pitch, yaw;
 
@@ -42,8 +43,9 @@ public:
   double linear_acceleration_threshold;
 
   rclcpp::Publisher<humanoid_interfaces::msg::ImuMsg>::SharedPtr imu_Pub;
-  rclcpp::Subscription<vision_interfaces::msg::PanAngleCompensation>::SharedPtr yaw_set_sub_;
-  void yawSetVisionCallback(const vision_interfaces::msg::PanAngleCompensation::SharedPtr msg);
+  // TODO(vision_interfaces): 패키지 만든 후 주석 해제
+  // rclcpp::Subscription<vision_interfaces::msg::PanAngleCompensation>::SharedPtr yaw_set_sub_;
+  // void yawSetVisionCallback(const vision_interfaces::msg::PanAngleCompensation::SharedPtr msg);
   double yaw_offset_ = 0.0;
   bool reset_desire_yaw_pending_ = false;
   double raw_yaw_deg_ = 0.0;

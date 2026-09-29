@@ -32,7 +32,7 @@
 
 namespace tune_walk
 {
-  extern rclcpp::Publisher<irc_humanoid_interfaces::msg::Tune2IkMsg>::SharedPtr tune2walk_Pub;
+  extern rclcpp::Publisher<humanoid_interfaces::msg::Tune2IkMsg>::SharedPtr tune2walk_Pub;
 
   /*****************************************************************************
   ** Interface [MainWindow]
@@ -50,7 +50,7 @@ namespace tune_walk
     ~MainWindow();
     QNode *qnode;
 
-    irc_humanoid_interfaces::msg::Tune2IkMsg tune2walk;
+    humanoid_interfaces::msg::Tune2IkMsg tune2walk;
 
     double Click_Value;
     double Offset_Scroll_Value;

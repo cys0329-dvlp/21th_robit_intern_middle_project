@@ -29,16 +29,16 @@ namespace tune_walk
     rclcpp::init(argc, argv);
     node = rclcpp::Node::make_shared("tune_walk");
 
-    tune2walk_Pub = node->create_publisher<irc_humanoid_interfaces::msg::Tune2IkMsg>("tune2walk", 10);
-    imuSub = node->create_subscription<irc_humanoid_interfaces::msg::ImuMsg>(
+    tune2walk_Pub = node->create_publisher<humanoid_interfaces::msg::Tune2IkMsg>("tune2walk", 10);
+    imuSub = node->create_subscription<humanoid_interfaces::msg::ImuMsg>(
         "Imu",
         rclcpp::QoS(rclcpp::KeepLast(10)).reliable().best_effort(),
         std::bind(&QNode::imuCallback, this, std::placeholders::_1));
-    zmpSub = node->create_subscription<irc_humanoid_interfaces::msg::ZmpMsg>(
+    zmpSub = node->create_subscription<humanoid_interfaces::msg::ZmpMsg>(
         "zmp",
         10,
         std::bind(&QNode::zmpCallback, this, std::placeholders::_1));
-    LandingSub = node->create_subscription<irc_humanoid_interfaces::msg::IkLTCMsg>(
+    LandingSub = node->create_subscription<humanoid_interfaces::msg::IkLTCMsg>(
         "Landing_Time_Control",
         10,
         std::bind(&QNode::LandingCallback, this, std::placeholders::_1));
@@ -47,7 +47,7 @@ namespace tune_walk
     this->start();
   }
 
-  void QNode::LandingCallback(const irc_humanoid_interfaces::msg::IkLTCMsg::SharedPtr msg)
+  void QNode::LandingCallback(const humanoid_interfaces::msg::IkLTCMsg::SharedPtr msg)
   {
     Landing_info.entire_time = msg->entire_time;
     Landing_info.swing_gain_l = msg->swing_gain_l;
@@ -63,14 +63,14 @@ namespace tune_walk
     Q_EMIT Landing_callback();
   }
 
-  void QNode::imuCallback(const irc_humanoid_interfaces::msg::ImuMsg::SharedPtr msg)
+  void QNode::imuCallback(const humanoid_interfaces::msg::ImuMsg::SharedPtr msg)
   {
     pitch = msg->pitch;
     roll = msg->roll;
     yaw = msg->yaw;
   }
 
-  void QNode::zmpCallback(const irc_humanoid_interfaces::msg::ZmpMsg::SharedPtr msg)
+  void QNode::zmpCallback(const humanoid_interfaces::msg::ZmpMsg::SharedPtr msg)
   {
     left_x_zmp = msg->left_x_zmp;
     left_y_zmp = msg->left_y_zmp;

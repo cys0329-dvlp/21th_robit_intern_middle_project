@@ -163,7 +163,7 @@ void IK_Solve::solve(double pX_r, double pY_r, double pZ_r, double Yaw_R_deg, do
   //     (void)Imu_pos;
   //     (void)Imu_neg;
   // 현재는 사용되지 않지만, 추후 제거 요망.
-  // irc_humanoid_interfaces::msg::IkAngleSimMsg Position_Info;
+  // humanoid_interfaces::msg::IkAngleSimMsg Position_Info;
   /////////////////////////////////  Solve Start  //////////////////////////////////
 
   const double C2p = 45, L_1 = 140, L_2 = 140; // C2p(Center to pelvis) = 중심에서 roll 축까지의 길이, L_1,2 = 링크 위 아래 길이
