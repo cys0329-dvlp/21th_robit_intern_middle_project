@@ -1,0 +1,14 @@
+/**:
+  ros__parameters:
+    loop_rate_hz: 20.0
+    # 이 시간 동안 gamecontroller 데이터가 안 오면 INITIAL 로 간주하고 정지
+    gamecontrol_timeout_sec: 2.0
+
+    topics:
+      gamecontrol_sub: "gamecontroldata"
+      imu_sub: "Imu"
+      master2ik_pub: "master2ik"
+      kick_flag_pub: "kick_flag"
+      motion_operator_pub: "motion_operator"
+      motion_end_sub: "motion_end"
+      # TODO(vision_interfaces): vision 토픽 추가

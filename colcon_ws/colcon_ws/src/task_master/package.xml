@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>task_master</name>
+  <version>0.0.0</version>
+  <description>경기 상태에 따라 보행/킥/모션 명령을 내리는 태스크 마스터 (뼈대)</description>
+  <maintainer email="todo@todo.todo">todo</maintainer>
+  <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>humanoid_interfaces</depend>
+  <depend>gamecontroller</depend>
+  <!-- TODO(vision_interfaces): 패키지 만든 후 주석 해제
+  <depend>vision_interfaces</depend> -->
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

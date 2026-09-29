@@ -73,9 +73,11 @@ E2BoxIMUNode::E2BoxIMUNode() : Node("e2box_imu_node"), is_shutting_down_(false)
   imu_Pub = this->create_publisher<humanoid_interfaces::msg::ImuMsg>(
     imu_bridge_pub_topic, rclcpp::QoS(rclcpp::KeepLast(1)).best_effort());
 
-  yaw_set_sub_ = this->create_subscription<vision_interfaces::msg::PanAngleCompensation>(
-    yaw_set_sub_topic, 5,
-    std::bind(&E2BoxIMUNode::yawSetVisionCallback, this, std::placeholders::_1));
+  // TODO(vision_interfaces): 패키지 만든 후 주석 해제
+  // yaw_set_sub_ = this->create_subscription<vision_interfaces::msg::PanAngleCompensation>(
+  //   yaw_set_sub_topic, 5,
+  //   std::bind(&E2BoxIMUNode::yawSetVisionCallback, this, std::placeholders::_1));
+  (void)yaw_set_sub_topic;
 
   auto period = std::chrono::milliseconds(1000 / loop_rate);
   timer_ = this->create_wall_timer(period, std::bind(&E2BoxIMUNode::timerCallback, this));
@@ -340,10 +342,11 @@ double E2BoxIMUNode::applyLowPassFilter(double current, double previous)
   return previous + lpf_alpha_ * diff;
 }
 
-void E2BoxIMUNode::yawSetVisionCallback(const vision_interfaces::msg::PanAngleCompensation::SharedPtr msg)
-{
-  // yaw_offset_ = msg->target_yaw_deg - raw_yaw_deg_;
-}
+// TODO(vision_interfaces): 패키지 만든 후 주석 해제
+// void E2BoxIMUNode::yawSetVisionCallback(const vision_interfaces::msg::PanAngleCompensation::SharedPtr msg)
+// {
+//   // yaw_offset_ = msg->target_yaw_deg - raw_yaw_deg_;
+// }
 
 void E2BoxIMUNode::publishEulerData()
 {

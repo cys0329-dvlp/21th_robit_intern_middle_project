@@ -25,17 +25,18 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Tune2IkMsg.msg"
   "msg/ZmpMsg.msg"
 
-  "msg/Master2vision.msg"
+  
 
-  "msg/Master2localization.msg"
+  
 
-  "msg/Master2udp.msg"
-  "msg/Udp2master.msg"
+  
+  
 
 
-  "msg/MotionOperator.msg"
+  
   
   "msg/Pidtuning.msg"
+  "msg/MotionOperator.msg"
 
   DEPENDENCIES std_msgs
   DEPENDENCIES geometry_msgs
