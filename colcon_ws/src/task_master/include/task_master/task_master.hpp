@@ -10,8 +10,7 @@
 #include "humanoid_interfaces/msg/imu_msg.hpp"
 #include "humanoid_interfaces/msg/master2_ik_msg.hpp"
 #include "humanoid_interfaces/msg/motion_operator.hpp"
-// TODO(vision_interfaces): 패키지 만든 후 주석 해제
-// #include "vision_interfaces/msg/..."
+#include "vision_interfaces/msg/obstacle_array.hpp"
 
 namespace task_master
 {
@@ -36,8 +35,7 @@ private:
   void gamecontrolCallback(const gamecontroller::msg::Gamecontroldata::SharedPtr msg);
   void imuCallback(const humanoid_interfaces::msg::ImuMsg::SharedPtr msg);
   void motionEndCallback(const humanoid_interfaces::msg::MotionOperator::SharedPtr msg);
-  // TODO(vision_interfaces): vision 콜백 추가
-  // void visionCallback(const vision_interfaces::msg::...::SharedPtr msg);
+  void visionCallback(const vision_interfaces::msg::ObstacleArray::SharedPtr msg);
 
   void tick();
 
@@ -61,6 +59,7 @@ private:
   rclcpp::Subscription<gamecontroller::msg::Gamecontroldata>::SharedPtr gamecontrol_sub_;
   rclcpp::Subscription<humanoid_interfaces::msg::ImuMsg>::SharedPtr imu_sub_;
   rclcpp::Subscription<humanoid_interfaces::msg::MotionOperator>::SharedPtr motion_end_sub_;
+  rclcpp::Subscription<vision_interfaces::msg::ObstacleArray>::SharedPtr obstacle_sub_;
   rclcpp::Publisher<humanoid_interfaces::msg::Master2IkMsg>::SharedPtr master2ik_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr kick_flag_pub_;
   rclcpp::Publisher<humanoid_interfaces::msg::MotionOperator>::SharedPtr motion_operator_pub_;
@@ -77,6 +76,12 @@ private:
   bool state_changed_ = false;  // 이번 tick 에 상태가 바뀌었으면 true
 
   int32_t running_motion_ = -1;  // 실행 중인 모션 번호, 없으면 -1
+
+  //Vision에서 받은 장애물 통과 정보
+  bool gap_found_ = true;
+  float gap_y_m_ = 0.0;
+  bool obstacle_data_received_ = false;
+  
 };
 
 }  // namespace task_master

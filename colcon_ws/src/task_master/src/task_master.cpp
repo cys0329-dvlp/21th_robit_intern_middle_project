@@ -1,5 +1,5 @@
 #include "task_master/task_master.hpp"
-
+#include "vision_interfaces/msg/obstacle_array.hpp"
 #include <chrono>
 #include <memory>
 
@@ -35,7 +35,9 @@ TaskMaster::TaskMaster()
   motion_end_sub_ = create_subscription<humanoid_interfaces::msg::MotionOperator>(
     motion_end_topic, motion_qos,
     std::bind(&TaskMaster::motionEndCallback, this, std::placeholders::_1));
-  // TODO(vision_interfaces): vision 구독 추가
+  Vision_sub_ = create_subscription<vision_interfaces::msg::ObstacleArray>(
+    vision_obstacle_topic, 10,
+    std::bind(&TaskMaster::visionCallback, this, std::placeholders::_1));
 
   master2ik_pub_ = create_publisher<humanoid_interfaces::msg::Master2IkMsg>(master2ik_topic, 10);
   kick_flag_pub_ = create_publisher<std_msgs::msg::String>(kick_flag_topic, 10);
@@ -72,6 +74,10 @@ void TaskMaster::motionEndCallback(const humanoid_interfaces::msg::MotionOperato
   }
 }
 
+void TaskMaster::visionCallback(const vision_interfaces::msg::ObstacleArray::SharedPtr msg)
+{
+  
+}
 // ============================ 메인 루프 ============================
 
 void TaskMaster::tick()
@@ -138,7 +144,7 @@ void TaskMaster::onPlaying()
   // TODO: 공 찾기 -> 공으로 이동 -> 정렬 -> kick("left"/"right")
   // TODO(vision_interfaces): 공/골대 정보 사용
   // TODO: game_.iskickoff 가 상대팀이면 킥오프 대기 시간 처리
-  stopWalk();
+  walk(9, 0, 0);
 }
 
 void TaskMaster::onFinished()

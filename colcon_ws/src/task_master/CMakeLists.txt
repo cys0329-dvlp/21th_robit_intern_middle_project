@@ -27,7 +27,7 @@ ament_target_dependencies(task_master_node
   std_msgs
   humanoid_interfaces
   gamecontroller
-  # vision_interfaces  # TODO(vision_interfaces)
+  vision_interfaces  
 )
 
 install(TARGETS task_master_node DESTINATION lib/${PROJECT_NAME})
