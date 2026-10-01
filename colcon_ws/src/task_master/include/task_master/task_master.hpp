@@ -50,6 +50,8 @@ private:
   // ---------------- 명령 헬퍼 ----------------
   // x, y: 보폭, yaw: 회전. ik_walk 의 master2ik 단위를 그대로 따른다.
   void walk(double x, double y, double yaw);
+  void rightwalk(double x, double y, double yaw);
+  void leftwalk(double x, double y, double yaw);
   void stopWalk();
   // side: "left" 또는 "right"
   void kick(const std::string & side);

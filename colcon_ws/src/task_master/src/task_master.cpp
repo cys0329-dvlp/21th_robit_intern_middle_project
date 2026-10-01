@@ -76,7 +76,10 @@ void TaskMaster::motionEndCallback(const humanoid_interfaces::msg::MotionOperato
 
 void TaskMaster::visionCallback(const vision_interfaces::msg::ObstacleArray::SharedPtr msg)
 {
-  
+  gap_found_ = msg->gap_found;
+  gap_y_m_ = msg->gap_y_m;
+
+  obstacle_data_received_ = true;
 }
 // ============================ 메인 루프 ============================
 
@@ -166,6 +169,28 @@ void TaskMaster::walk(double x, double y, double yaw)
   msg.y_length = y;
   msg.yaw = yaw;
   msg.flag = 1.0;
+  master2ik_pub_->publish(msg);
+}
+
+void TaskMaster::leftwalk(double x, double y, double yaw)
+{
+  humanoid_interfaces::msg::Master2IkMsg msg;
+  // TO DO: 좌횡진할 때 값 수정 후 주석 해제
+  // msg.x_length = x;
+  // msg.y_length = y;
+  // msg.yaw = yaw;
+  // msg.flag = 1.0;
+  master2ik_pub_->publish(msg);
+}
+
+void TaskMaster::rightwalk(double x, double y, double yaw)
+{
+  humanoid_interfaces::msg::Master2IkMsg msg;
+  // TO DO: 우횡진할 때 값 수정 후 주석 해제
+  // msg.x_length = x;
+  // msg.y_length = y;
+  // msg.yaw = yaw;
+  // msg.flag = 1.0;
   master2ik_pub_->publish(msg);
 }
 
