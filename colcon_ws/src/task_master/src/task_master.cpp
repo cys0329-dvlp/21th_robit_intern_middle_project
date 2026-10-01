@@ -149,7 +149,24 @@ void TaskMaster::onPlaying()
   // TODO: 공 찾기 -> 공으로 이동 -> 정렬 -> kick("left"/"right")
   // TODO(vision_interfaces): 공/골대 정보 사용
   // TODO: game_.iskickoff 가 상대팀이면 킥오프 대기 시간 처리
-  walk(9, 0, 0);
+  walk();
+  /*
+  while(1)
+  {
+    if(gap_found_ && gap_y_m_ == 0.0)
+    {
+      walk(15, 0, 0);
+    }
+    else if(gap_found_ && gap_y_m_ < 0)
+    {
+      walk(0,-5, 0);
+    }
+    else if(gap_found_ && gap_y_m_ > 0)
+    {
+      walk(15, 5, 0);
+    }
+  }
+  */
 }
 
 void TaskMaster::onFinished()
@@ -164,17 +181,17 @@ void TaskMaster::onPenalized()
 
 // ============================ 명령 헬퍼 ============================
 
-void TaskMaster::walk(double x, double y, double yaw)
+void TaskMaster::walk()
 {
   humanoid_interfaces::msg::Master2IkMsg msg;
-  msg.x_length = x;
-  msg.y_length = y;
-  msg.yaw = yaw;
+  msg.x_length = 9;
+  msg.y_length = 0;
+  msg.yaw = 0;
   msg.flag = 1.0;
   master2ik_pub_->publish(msg);
 }
 
-void TaskMaster::leftwalk(double x, double y, double yaw)
+void TaskMaster::leftwalk()
 {
   humanoid_interfaces::msg::Master2IkMsg msg;
   // TO DO: 좌횡진할 때 값 수정 후 주석 해제
@@ -185,7 +202,7 @@ void TaskMaster::leftwalk(double x, double y, double yaw)
   master2ik_pub_->publish(msg);
 }
 
-void TaskMaster::rightwalk(double x, double y, double yaw)
+void TaskMaster::rightwalk()
 {
   humanoid_interfaces::msg::Master2IkMsg msg;
   // TO DO: 우횡진할 때 값 수정 후 주석 해제
