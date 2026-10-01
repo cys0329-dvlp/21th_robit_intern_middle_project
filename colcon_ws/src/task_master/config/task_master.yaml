@@ -11,4 +11,4 @@
       kick_flag_pub: "kick_flag"
       motion_operator_pub: "motion_operator"
       motion_end_sub: "motion_end"
-      # TODO(vision_interfaces): vision 토픽 추가
+      vision_sub: "/vision/obstacles"

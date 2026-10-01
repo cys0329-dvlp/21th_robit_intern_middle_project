@@ -1,0 +1,41 @@
+obstacle_vision:
+  ros__parameters:
+    image_topic: "/camera1/camera/compressed_image"
+    camera_info_topic: "/camera1/info"
+    obstacles_topic: "/vision/obstacles"
+    debug_image_topic: "/vision/debug_image"
+
+    show_window: true      # imshow 창 (로봇에서 모니터 없으면 false)
+    display_scale: 1.0
+    image_path: ""         # 사진 경로 넣으면 카메라 대신 그 사진으로 테스트
+
+    camera:
+      height: 0.60         # 바닥 ~ 렌즈 중심 실측 (m), 10/1
+      tilt_deg: 27.0       # 아래로 숙인 각 (도, 아래가 +). 짐벌 tilt -108000(30도) 일 때 공 거리로 실측한 값 (10/1)
+      fallback:            # camera_info 가 안 올 때만 사용
+        width: 640.0
+        fx: 471.953641
+        fy: 476.574144
+        cx: 309.509126
+        cy: 228.222101
+
+    color:                 # 트랙바로 맞춘 뒤 p 키로 출력해서 여기에 옮겨 적기 (현재 값 = 9/30 21:50 튜닝값)
+      red_h_low: 30
+      red_h_high: 137
+      red_s_min: 150
+      red_v_min: 67
+      blue_h_min: 80
+      blue_h_max: 114
+      blue_s_min: 200
+      blue_v_min: 115
+      morph_kernel: 5
+      min_area_ratio: 0.003
+      split_jump_ratio: 0.02   # 옆 열과 아랫변이 화면 높이의 이 비율 이상 튀면 다른 판
+
+    gap:
+      obstacle_width: 0.43
+      row_tol_ratio: 0.25      # 거리 차이 > 가까운 쪽 거리 x 이 값 이면 다른 행 (비율이라 캘리브 스케일 오차에 강함)
+      robot_half_width: 0.20   # TODO: 로봇 어깨폭/2 + 여유
+      search_half_width: 1.0
+      max_range: 6.0           # 이보다 먼 건 무시 (m). 캘리브가 틀리면 먼 행이 멀게 나오니 여유 있게
+      min_height: 0.05         # 보이는 높이가 이보다 낮으면 노이즈 (m)

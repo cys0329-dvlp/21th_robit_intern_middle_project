@@ -24,6 +24,8 @@ TaskMaster::TaskMaster()
 
   // ik_walk 쪽 QoS 에 맞춤
   const auto motion_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
+  const auto vision_obstacle_topic =
+    declare_parameter<std::string>("topics.vision_sub", "vision/obstacles");
 
   gamecontrol_sub_ = create_subscription<gamecontroller::msg::Gamecontroldata>(
     gamecontrol_topic, 10,
@@ -35,7 +37,7 @@ TaskMaster::TaskMaster()
   motion_end_sub_ = create_subscription<humanoid_interfaces::msg::MotionOperator>(
     motion_end_topic, motion_qos,
     std::bind(&TaskMaster::motionEndCallback, this, std::placeholders::_1));
-  Vision_sub_ = create_subscription<vision_interfaces::msg::ObstacleArray>(
+  vision_sub_ = create_subscription<vision_interfaces::msg::ObstacleArray>(
     vision_obstacle_topic, 10,
     std::bind(&TaskMaster::visionCallback, this, std::placeholders::_1));
 

@@ -61,7 +61,7 @@ private:
   rclcpp::Subscription<gamecontroller::msg::Gamecontroldata>::SharedPtr gamecontrol_sub_;
   rclcpp::Subscription<humanoid_interfaces::msg::ImuMsg>::SharedPtr imu_sub_;
   rclcpp::Subscription<humanoid_interfaces::msg::MotionOperator>::SharedPtr motion_end_sub_;
-  rclcpp::Subscription<vision_interfaces::msg::ObstacleArray>::SharedPtr obstacle_sub_;
+  rclcpp::Subscription<vision_interfaces::msg::ObstacleArray>::SharedPtr vision_sub_;
   rclcpp::Publisher<humanoid_interfaces::msg::Master2IkMsg>::SharedPtr master2ik_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr kick_flag_pub_;
   rclcpp::Publisher<humanoid_interfaces::msg::MotionOperator>::SharedPtr motion_operator_pub_;

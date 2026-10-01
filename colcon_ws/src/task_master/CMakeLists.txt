@@ -13,8 +13,8 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(humanoid_interfaces REQUIRED)
 find_package(gamecontroller REQUIRED)
-# TODO(vision_interfaces): 패키지 만든 후 주석 해제
-# find_package(vision_interfaces REQUIRED)
+find_package(vision_interfaces REQUIRED)
+find_package(obstacle_vision REQUIRED)  
 
 add_executable(task_master_node
   src/task_master.cpp
@@ -27,7 +27,8 @@ ament_target_dependencies(task_master_node
   std_msgs
   humanoid_interfaces
   gamecontroller
-  vision_interfaces  
+  vision_interfaces
+  obstacle_vision
 )
 
 install(TARGETS task_master_node DESTINATION lib/${PROJECT_NAME})
