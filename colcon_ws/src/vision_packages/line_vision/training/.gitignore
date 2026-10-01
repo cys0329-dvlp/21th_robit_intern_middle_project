@@ -1,0 +1,11 @@
+# UFLD-v2 원본 저장소 (각자 clone)
+ufld/
+# 사진, 라벨, 학습 결과 (용량 큼)
+data/
+runs/
+weights/
+*.pth
+*.onnx
+*.bin
+*.xml
+__pycache__/
