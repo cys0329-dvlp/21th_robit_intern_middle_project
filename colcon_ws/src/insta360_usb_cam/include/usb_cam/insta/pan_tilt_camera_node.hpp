@@ -75,6 +75,9 @@ private:
   rclcpp::Subscription<insta360_usb_cam::msg::InstaPanTiltMsgs>::SharedPtr pan_tilt_sub_;
 
   rclcpp::TimerBase::SharedPtr timer_;
+  // Insta360 Link 는 첫 프레임이 나간 직후 짐벌을 정면으로 되돌리므로, 그 뒤에 pan/tilt 를 한 번 더 건다
+  rclcpp::TimerBase::SharedPtr pan_tilt_reapply_timer_;
+  bool pan_tilt_reapplied_ = false;
   OnSetParametersCallbackHandle::SharedPtr param_change_callback_;
   void pan_tilt_callback(const insta360_usb_cam::msg::InstaPanTiltMsgs::SharedPtr msg);
 

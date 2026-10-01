@@ -148,8 +148,9 @@ PanTiltCamera::on_configure(const rclcpp_lifecycle::State &)
   config.fps = fps;
   config.format = format;
 
-  image_width = width;
-  image_height = height;
+  // usb_camera.cpp 가 프레임을 항상 640x480 으로 줄여서 내보내므로 camera_info 도 그 크기로 (1280 이면 obstacle_vision 이 K 를 0.5배 함)
+  image_width = 640;
+  image_height = 480;
 
   v4l2_stream_err stream_result = camera_->start_stream(config);
   if (stream_result != STREAM_OK)
@@ -213,6 +214,16 @@ PanTiltCamera::on_activate(const rclcpp_lifecycle::State &)
         sensor_msgs::msg::Image::SharedPtr compressed_img_msg =
           cv_bridge::CvImage(header, "bgr8", frame).toImageMsg();
         compressed_image_pub_->publish(*compressed_img_msg);
+
+        if (!pan_tilt_reapplied_) {
+          pan_tilt_reapplied_ = true;
+          pan_tilt_reapply_timer_ = this->create_wall_timer(std::chrono::milliseconds(1500), [this]() {
+            pan_tilt_reapply_timer_->cancel();
+            RCLCPP_INFO(this->get_logger(), "Re-applying pan %d / tilt %d", pan, tilt);
+            set_param("pan", pan);
+            set_param("tilt", tilt);
+          });
+        }
       }
       publish_camera_info(header);
       publish_compressed_camera_info(header);

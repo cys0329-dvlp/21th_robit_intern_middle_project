@@ -22,8 +22,8 @@
     focus: -1
     auto_focus: false
     zoom: -1
-    pan: -1
-    tilt: -1  
+    pan: 0          # -1 이면 카메라에 남아있는 쓰레기 pan 값 때문에 tilt 설정이 ERANGE 로 실패함
+    tilt: -108000  
     rotate: -1
     horizontal_flip: false
     vertical_flip: false
