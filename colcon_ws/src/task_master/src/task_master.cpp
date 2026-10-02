@@ -1,6 +1,7 @@
 #include "task_master/task_master.hpp"
 #include "vision_interfaces/msg/obstacle_array.hpp"
 #include <chrono>
+#include <cstdlib>
 #include <memory>
 
 namespace task_master
@@ -11,6 +12,20 @@ TaskMaster::TaskMaster()
 {
   const double loop_rate_hz = declare_parameter<double>("loop_rate_hz", 20.0);
   gamecontrol_timeout_sec_ = declare_parameter<double>("gamecontrol_timeout_sec", 2.0);
+
+  // 방향별 보행 명령값 (하드웨어 좌우 편차 보정용, ik_walk 의 Tuning_Side 가 추가로 더해짐)
+  straight_cmd_ = {
+    declare_parameter<double>("walk.straight.x", 10.0),
+    declare_parameter<double>("walk.straight.y", 0.0),
+    declare_parameter<double>("walk.straight.yaw", 0.0)};
+  left_cmd_ = {
+    declare_parameter<double>("walk.left.x", 0.0),
+    declare_parameter<double>("walk.left.y", 7.0),
+    declare_parameter<double>("walk.left.yaw", 0.0)};
+  right_cmd_ = {
+    declare_parameter<double>("walk.right.x", 0.0),
+    declare_parameter<double>("walk.right.y", -7.0),
+    declare_parameter<double>("walk.right.yaw", 0.0)};
 
   const auto gamecontrol_topic =
     declare_parameter<std::string>("topics.gamecontrol_sub", "gamecontroldata");
@@ -134,9 +149,10 @@ void TaskMaster::onInitial()
 
 void TaskMaster::onReady()
 {
-  if(state_changed_)
+  // 이미 떠 있으면 다시 띄우지 않음 (중복 실행 시 시리얼 포트 충돌 -> 통신 에러)
+  if(state_changed_ && std::system("pgrep -f '[d]ynamixel_hardware_interface_node' > /dev/null") != 0)
   {
-    system("nohup bash -c "
+    std::system("nohup bash -c "
       "'source /home/robit/Desktop/task_master/colcon_ws/install/setup.bash && "
       "ros2 launch dynamixel_hardware_interface dynamixel_hardware.launch.py' "
       "> /tmp/dynamixel.log 2>&1 &"
@@ -148,8 +164,9 @@ void TaskMaster::onReady()
 
 void TaskMaster::onSet()
 {
-  if (state_changed_) {
-    system(
+  // 이미 떠 있으면 다시 띄우지 않음 (ik_walk 가 두 개면 서로 다른 명령을 보냄)
+  if (state_changed_ && std::system("pgrep -x ik_walk > /dev/null") != 0) {
+    std::system(
       "nohup bash -c "
       "'source /home/robit/Desktop/task_master/colcon_ws/install/setup.bash && "
       "ros2 run ik_walk ik_walk' "
@@ -162,15 +179,15 @@ void TaskMaster::onSet()
 
 void TaskMaster::onPlaying()
 {
-    if(gap_found_ && -0.3 < gap_y_m_ && gap_y_m_ < 0.3)
+    if(gap_found_ && gap_y_m_ == 0)
     {
       walk();
     }
-    else if(gap_found_ && gap_y_m_ <= -0.3) //마이너스 -> 우횡진
+    else if(gap_found_ && gap_y_m_ < 0) //마이너스 -> 우횡진
     {
       rightwalk();
     }
-    else if(gap_found_ &&  0.3 <= gap_y_m_) // 플러스 -> 좌횡진
+    else if(gap_found_ && 0 < gap_y_m_) // 플러스 -> 좌횡진
     {
       leftwalk();
     }
@@ -190,30 +207,25 @@ void TaskMaster::onPenalized()
 
 void TaskMaster::walk()
 {
-  humanoid_interfaces::msg::Master2IkMsg msg;
-  msg.x_length = 10;
-  msg.y_length = 0;
-  msg.yaw = 0;
-  msg.flag = 1.0;
-  master2ik_pub_->publish(msg);
+  publishWalk(straight_cmd_);
 }
 
 void TaskMaster::leftwalk()
 {
-  humanoid_interfaces::msg::Master2IkMsg msg;
-  msg.x_length = 0;
-  msg.y_length = 7;
-  msg.yaw = 0;
-  msg.flag = 1.0;
-  master2ik_pub_->publish(msg);
+  publishWalk(left_cmd_);
 }
 
 void TaskMaster::rightwalk()
 {
+  publishWalk(right_cmd_);
+}
+
+void TaskMaster::publishWalk(const WalkCmd & cmd)
+{
   humanoid_interfaces::msg::Master2IkMsg msg;
-  msg.x_length = 0;
-  msg.y_length = -7;
-  msg.yaw = 0;
+  msg.x_length = cmd.x;
+  msg.y_length = cmd.y;
+  msg.yaw = cmd.yaw;
   msg.flag = 1.0;
   master2ik_pub_->publish(msg);
 }

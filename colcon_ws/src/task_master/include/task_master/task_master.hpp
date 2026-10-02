@@ -53,6 +53,14 @@ private:
   void rightwalk();
   void leftwalk();
   void stopWalk();
+
+  struct WalkCmd
+  {
+    double x = 0.0;
+    double y = 0.0;
+    double yaw = 0.0;
+  };
+  void publishWalk(const WalkCmd & cmd);
   // side: "left" 또는 "right"
   void kick(const std::string & side);
   void startMotion(int32_t motion_num);
@@ -78,6 +86,11 @@ private:
   bool state_changed_ = false;  // 이번 tick 에 상태가 바뀌었으면 true
 
   int32_t running_motion_ = -1;  // 실행 중인 모션 번호, 없으면 -1
+
+  // 방향별 보행 명령값 (yaml walk.* 로 튜닝)
+  WalkCmd straight_cmd_;
+  WalkCmd left_cmd_;
+  WalkCmd right_cmd_;
 
   //Vision에서 받은 장애물 통과 정보
   bool gap_found_ = true;

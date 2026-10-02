@@ -12,3 +12,11 @@
       motion_operator_pub: "motion_operator"
       motion_end_sub: "motion_end"
       vision_sub: "/vision/obstacles"
+
+    # 방향별 보행 명령 (master2ik 단위). ik_walk 파라미터 파일의 Tuning_Side(-1.5)가 y 에 추가로 더해짐
+    # 좌횡진이 약하면 walk.left.y 를 키우고, 직진 중 옆으로 밀리면 walk.straight.y 로 상쇄
+    # 주의: |y| >= 10 이면 ik_walk 가 보행 주기를 줄이는 모드로 들어감
+    walk:
+      straight: {x: 10.0, y: 0.0, yaw: 0.0}
+      left:     {x: 0.0,  y: 7.0, yaw: 0.0}   # Tuning_Side -1.5 포함 실효 +8.0 (우횡진 실효 -8.5)
+      right:    {x: 0.0,  y: -7.0, yaw: 0.0}

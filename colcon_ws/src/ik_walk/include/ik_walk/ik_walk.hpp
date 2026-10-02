@@ -60,13 +60,21 @@ public:
   IK_Solve IK;
   IK_zmp_pos_control Zmp_pos;
   int imu_count=0;
-  int first_yaw=0;
+  double first_yaw=0;
   int first_count=0;
+
+  // yaw hold 비례 제어 파라미터 (Yaw_gain = kp * err, deg)
+  double yaw_hold_kp = 2.0;
+  double yaw_hold_max = 5.0;
+  double yaw_hold_deadband = 0.5;
 
   explicit IKwalk(const std::string &node_name)
       : Node(node_name)
   {
     this->declare_parameter("qos_depth", 10);
+    yaw_hold_kp = this->declare_parameter("yaw_hold_kp", yaw_hold_kp);
+    yaw_hold_max = this->declare_parameter("yaw_hold_max", yaw_hold_max);
+    yaw_hold_deadband = this->declare_parameter("yaw_hold_deadband", yaw_hold_deadband);
     rclcpp::QoS qos_profile(10);
     int8_t qos_depth = this->get_parameter("qos_depth").get_value<int8_t>();
     const auto QOS_RKL10V = rclcpp::QoS(rclcpp::KeepLast(qos_depth)).reliable().durability_volatile();

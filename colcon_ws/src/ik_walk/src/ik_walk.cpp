@@ -96,6 +96,8 @@ void IKwalk::get_parameters()
   is >> Past_Param.X.Tuning_X;
   is >> Past_Param.Y.Tuning_Side;
   is >> Past_Param.Yaw_R.Tuning_Yaw;
+  // 파일에는 Tuning_Yaw 가 하나뿐 -> 왼발에도 동일하게 적용 (tune2ik_callback 과 동일)
+  Past_Param.Yaw_L.Tuning_Yaw = Past_Param.Yaw_R.Tuning_Yaw;
 
   is >> Balance.Balance_Value_0;
   is >> Balance.Balance_Pitch_GP;
@@ -363,6 +365,8 @@ void IKwalk::Walk_Start_End(Walk_Param &Now_Param, Walk_Param &Past_Param)
     if (Past_Param.IK_Flag)
     {
       Start_Flag = true;
+      // 보행 시작 시점의 방향을 yaw hold 기준으로 사용
+      first_yaw = IMU.yaw;
       // cout << "Start_Flag" << endl;
     }
     else if (!Past_Param.IK_Flag && Timer_Time == 0)
@@ -1194,20 +1198,14 @@ if(target > 0){
       Adjust.desire_yaw = first_yaw;
       Adjust.Yaw_flag = true;
 
-      double yaw_error = Adjust.desire_yaw - IMU.yaw;
+      // -180~180 로 wrap 해서 오차 계산
+      double yaw_error = std::remainder(Adjust.desire_yaw - IMU.yaw, 360.0);
 
-      if (yaw_error >= 2.0)
-      {
-        Adjust.Yaw_gain = 5.0;
-      }
-      else if (yaw_error <= -3.0)
-      {
-        Adjust.Yaw_gain = -5.0;
-      }
-      else
-      {
+      // 비례 제어 (작은 deadband 안에서는 0, 출력은 ±yaw_hold_max 로 제한)
+      if (fabs(yaw_error) < yaw_hold_deadband)
         Adjust.Yaw_gain = 0.0;
-      }
+      else
+        Adjust.Yaw_gain = std::clamp(yaw_hold_kp * yaw_error, -yaw_hold_max, yaw_hold_max);
 
       std::cout << "[YAW HOLD ON] "
                 << "gain=" << Adjust.Yaw_gain
