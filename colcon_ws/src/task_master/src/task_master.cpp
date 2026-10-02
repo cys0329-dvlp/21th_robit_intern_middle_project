@@ -146,9 +146,6 @@ void TaskMaster::onSet()
 
 void TaskMaster::onPlaying()
 {
-  // TODO: 공 찾기 -> 공으로 이동 -> 정렬 -> kick("left"/"right")
-  // TODO(vision_interfaces): 공/골대 정보 사용
-  // TODO: game_.iskickoff 가 상대팀이면 킥오프 대기 시간 처리
     if(gap_found_ && gap_y_m_ == 0.0)
     {
       walk();
