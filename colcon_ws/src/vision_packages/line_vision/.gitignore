@@ -1,0 +1,2 @@
+# 모델 파일은 용량이 커서 git 에 안 올림 (OneDrive 로 옮김)
+models/*.onnx

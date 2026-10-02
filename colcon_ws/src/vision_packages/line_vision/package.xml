@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>line_vision</name>
+  <version>0.1.0</version>
+  <description>경기장 경계선 인식 (UFLD-v2 + OpenVINO)</description>
+  <maintainer email="rljw2066@gmail.com">ray</maintainer>
+  <license>MIT</license>
+
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>vision_interfaces</depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <!-- openvino 는 rosdep 키가 없어서 pip 로 따로 설치 (README 참고) -->
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

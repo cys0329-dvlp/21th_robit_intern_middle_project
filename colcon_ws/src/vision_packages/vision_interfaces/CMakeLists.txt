@@ -9,6 +9,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Obstacle.msg"
   "msg/ObstacleArray.msg"
   "msg/PanAngleCompensation.msg"
+  "msg/FieldLines.msg"
   DEPENDENCIES std_msgs
 )
 

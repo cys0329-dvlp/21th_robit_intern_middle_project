@@ -1,4 +1,4 @@
-# 장애물 1개 (같은 색 판이 옆 칸에 붙어 있으면 1개로 묶이고 count 가 2)
+# 장애물 1개 (같은 색 판이 옆 칸에 가까이 있으면 1개로 묶이고 count 가 2)
 uint8 RED=0
 uint8 BLUE=1
 uint8 color
@@ -6,8 +6,8 @@ uint8 color
 # 로봇(카메라 바로 아래 바닥) 기준 위치, 단위 m
 float32 x_m        # 앞쪽 거리
 float32 y_m        # 좌우, +가 왼쪽
-float32 width_m    # 추정 폭. 0.43 근처면 1개, 0.86 근처면 2개가 붙은 것
-uint8 count        # 붙어 있는 판 개수 추정 (width_m / 0.43)
+float32 width_m    # 추정 폭. 0.40 근처면 1개, 0.80 근처면 2개가 붙은 것
+uint8 count        # 붙어 있는 판 개수 추정 (width_m / 0.40)
 int32 row          # 0 = 가장 가까운 행, 1, 2 ... (거리 순)
 
 # 아랫변 상태

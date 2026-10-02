@@ -1,0 +1,36 @@
+line_vision:
+  ros__parameters:
+    image_topic: "/camera1/camera/compressed_image"   # 이름만 compressed, 실제는 sensor_msgs/Image bgr8
+    camera_info_topic: "/camera1/info"
+    field_lines_topic: "/vision/field_lines"
+    debug_image_topic: "/vision/line_debug_image"
+
+    show_window: true      # imshow 창 (로봇에서 모니터 없으면 false, 대신 rqt_image_view 로 debug_image_topic)
+    image_path: ""         # 사진 경로/와일드카드 넣으면 카메라 대신 그 사진들로 테스트 (0.5초마다 다음)
+
+    model:
+      path: ""             # 비우면 설치된 share/line_vision/models/field_best.onnx
+      device: "CPU"        # 인텔 내장그래픽 쓰려면 "GPU" (intel-opencl-icd 필요)
+      num_threads: 0       # 0 = 자동(전부). 걷기/obstacle_vision 이 느려지면 2~4 로
+      row_anchor_top: 0.03 # training/configs/field_res18.py 와 같아야 함
+      min_points: 4        # 화면에서 선 위 점이 이보다 적으면 없는 걸로
+
+    camera:                # obstacle_vision.yaml 과 같은 값으로 맞출 것!
+      height: 0.60
+      tilt_deg: 27.0
+      use_distortion: true # camera_info 에 왜곡계수(D)가 있으면 점을 펴서 계산
+      fallback:            # camera_info 가 안 올 때만
+        width: 640.0
+        fx: 471.953641
+        fy: 476.574144
+        cx: 309.509126
+        cy: 228.222101
+
+    fit:
+      max_range: 3.0       # 이보다 먼 바닥 점은 버림 (m). 멀수록 1픽셀 오차가 커짐
+      min_points: 4        # 직선 맞춘 뒤 남은 점이 이보다 적으면 못 찾은 걸로
+      min_length: 0.3      # 바닥에서 이 길이(m) 이상 보여야 믿음
+      outlier_m: 0.05      # 직선에서 이보다 먼 점은 빼고 다시 맞춤
+
+    field:
+      width: 1.4           # 경기장 폭 A (m). field_y 계산용

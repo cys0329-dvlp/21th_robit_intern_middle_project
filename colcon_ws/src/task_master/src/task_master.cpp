@@ -134,34 +134,48 @@ void TaskMaster::onInitial()
 
 void TaskMaster::onReady()
 {
-  // TODO: 시작 위치로 이동 (game_.position, game_.myside, game_.iskickoff 참고)
+  if(state_changed_)
+  {
+    system("nohup bash -c "
+      "'source /home/robit/Desktop/task_master/colcon_ws/install/setup.bash && "
+      "ros2 launch dynamixel_hardware_interface dynamixel_hardware.launch.py' "
+      "> /tmp/dynamixel.log 2>&1 &"
+    );
+  }
+
   stopWalk();
 }
 
 void TaskMaster::onSet()
 {
-  // 규정상 SET 에서는 움직이면 안 됨
+  if (state_changed_) {
+    system(
+      "nohup bash -c "
+      "'source /home/robit/Desktop/task_master/colcon_ws/install/setup.bash && "
+      "ros2 run ik_walk ik_walk' "
+      "> /tmp/ik_walk.log 2>&1 &"
+    );
+  }
+
   stopWalk();
 }
 
 void TaskMaster::onPlaying()
 {
-    if(gap_found_ && gap_y_m_ == 0.0)
+    if(gap_found_ && -0.3 < gap_y_m_ && gap_y_m_ < 0.3)
     {
       walk();
     }
-    else if(gap_found_ && gap_y_m_ < 0)
-    {
-      leftwalk();
-    }
-    else if(gap_found_ && gap_y_m_ > 0)
+    else if(gap_found_ && gap_y_m_ <= -0.3) //마이너스 -> 우횡진
     {
       rightwalk();
     }
-  }
-  
+    else if(gap_found_ &&  0.3 <= gap_y_m_) // 플러스 -> 좌횡진
+    {
+      leftwalk();
+    }
 }
-
+  
 void TaskMaster::onFinished()
 {
   stopWalk();
@@ -177,7 +191,7 @@ void TaskMaster::onPenalized()
 void TaskMaster::walk()
 {
   humanoid_interfaces::msg::Master2IkMsg msg;
-  msg.x_length = 9;
+  msg.x_length = 10;
   msg.y_length = 0;
   msg.yaw = 0;
   msg.flag = 1.0;
@@ -197,11 +211,10 @@ void TaskMaster::leftwalk()
 void TaskMaster::rightwalk()
 {
   humanoid_interfaces::msg::Master2IkMsg msg;
-  // TO DO: 우횡진할 때 값 수정 후 주석 해제
   msg.x_length = 0;
   msg.y_length = -7;
   msg.yaw = 0;
-  // msg.flag = 1.0;
+  msg.flag = 1.0;
   master2ik_pub_->publish(msg);
 }
 

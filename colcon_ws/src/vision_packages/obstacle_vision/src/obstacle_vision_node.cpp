@@ -1,4 +1,5 @@
 // 카메라 이미지 -> obstacle_detector 로 처리 -> /vision/obstacles 로 publish
+// line_vision 의 /vision/field_lines 가 오고 있으면 경기장 밖은 빈 틈으로 고르지 않음 (안 오면 예전처럼)
 // show_window: true 면 imshow 로 결과/마스크 창을 띄우고, 마스크 창의 트랙바로 HSV 를 실시간 튜닝
 //   키: s = 현재 프레임 저장, p = 현재 HSV 값 출력 (yaml 에 옮겨 적기), q = 창 닫기
 
@@ -14,6 +15,7 @@
 #include <cv_bridge/cv_bridge.hpp>
 
 #include "obstacle_vision/obstacle_detector.hpp"
+#include "vision_interfaces/msg/field_lines.hpp"
 #include "vision_interfaces/msg/obstacle_array.hpp"
 
 namespace obstacle_vision
@@ -71,11 +73,28 @@ public:
     gp_.max_range = declare_parameter<double>("gap.max_range", gp_.max_range);
     gp_.min_height = declare_parameter<double>("gap.min_height", gp_.min_height);
 
+    // ---------------- 경기장 경계선 (line_vision) ----------------
+    use_field_ = declare_parameter<bool>("field.use_lines", true);
+    const auto field_topic =
+      declare_parameter<std::string>("field.topic", "/vision/field_lines");
+    field_timeout_ = declare_parameter<double>("field.timeout_s", 0.5);
+    field_max_angle_ = declare_parameter<double>("field.max_line_angle_deg", 60.0) * M_PI / 180.0;
+    field_width_ = declare_parameter<double>("field.width", 1.4);
+    field_margin_ = declare_parameter<double>("field.margin", 0.20);
+
     // ---------------- 통신 ----------------
     obstacles_pub_ = create_publisher<vision_interfaces::msg::ObstacleArray>(out_topic, 10);
     debug_pub_ = create_publisher<sensor_msgs::msg::Image>(debug_topic, 1);
     info_sub_ = create_subscription<sensor_msgs::msg::CameraInfo>(
       info_topic, 10, std::bind(&ObstacleVisionNode::infoCallback, this, std::placeholders::_1));
+    if (use_field_) {
+      field_sub_ = create_subscription<vision_interfaces::msg::FieldLines>(
+        field_topic, 10, [this](const vision_interfaces::msg::FieldLines::SharedPtr msg) {
+          field_msg_ = *msg;
+          field_time_ = std::chrono::steady_clock::now();
+          has_field_ = true;
+        });
+    }
 
     // image_path 가 있으면 카메라 대신 사진으로 테스트
     const auto image_path = declare_parameter<std::string>("image_path", "");
@@ -131,6 +150,30 @@ private:
     process(frame, msg->header);
   }
 
+  // 최근(field.timeout_s 안) 받은 경계선 -> FieldInfo. 오래됐거나 없으면 valid=false (경기장 제한 안 함)
+  FieldInfo makeFieldInfo() const
+  {
+    FieldInfo f;
+    f.width = field_width_;
+    f.margin = field_margin_;
+    if (!has_field_) {return f;}
+    const double age = std::chrono::duration<double>(
+      std::chrono::steady_clock::now() - field_time_).count();
+    if (age > field_timeout_) {return f;}
+
+    const auto & m = field_msg_;
+    auto set = [this](FieldLine & l, bool found, double dist, double angle_deg) {
+        const double a = angle_deg * M_PI / 180.0;
+        l.found = found && std::abs(a) < field_max_angle_;  // 거의 옆으로 누운 선은 안 믿음
+        l.dist = dist;
+        l.angle = a;
+      };
+    set(f.left, m.left_found, m.left_dist_m, m.left_angle_deg);
+    set(f.right, m.right_found, m.right_dist_m, m.right_angle_deg);
+    f.valid = f.left.found || f.right.found;
+    return f;
+  }
+
   // 이미지 해상도에 맞게 fx, fy, cx, cy 를 맞춘다 (camera_info 해상도와 다를 수 있음)
   void updateIntrinsics(const cv::Mat & frame)
   {
@@ -157,7 +200,7 @@ private:
     }
     updateIntrinsics(frame);
 
-    const Result r = detect(frame, cp_, cam_, gp_);
+    const Result r = detect(frame, cp_, cam_, gp_, makeFieldInfo());
     publish(r, header);
 
     const double ms = std::chrono::duration<double, std::milli>(
@@ -281,6 +324,12 @@ private:
   GapParams gp_;
   double fb_w_, fb_fx_, fb_fy_, fb_cx_, fb_cy_;
 
+  bool use_field_ = true;
+  double field_timeout_, field_max_angle_, field_width_, field_margin_;
+  vision_interfaces::msg::FieldLines field_msg_;
+  std::chrono::steady_clock::time_point field_time_;
+  bool has_field_ = false;
+
   sensor_msgs::msg::CameraInfo info_;
   bool has_info_ = false;
   bool show_window_ = true;
@@ -290,6 +339,7 @@ private:
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
   rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr info_sub_;
+  rclcpp::Subscription<vision_interfaces::msg::FieldLines>::SharedPtr field_sub_;
   rclcpp::Publisher<vision_interfaces::msg::ObstacleArray>::SharedPtr obstacles_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr debug_pub_;
   rclcpp::TimerBase::SharedPtr timer_;

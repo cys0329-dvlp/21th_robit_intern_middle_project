@@ -405,9 +405,9 @@ void assignRows(Result & r, const GapParams & g)
 }
 
 // ============================ 7) 같은 행 조각 합치기 ============================
-// 같은 행, 같은 색, 화면에서 붙어 있음 = 한 판이 앞 판에 일부 가려져 둘로 보이거나, 옆 칸 판 2개가 붙은 것.
-// 경기장 칸 간격(0.425m) ~= 판 폭(0.43m) 이라 같은 행 판끼리는 딱 붙어 있거나 한 칸(판 1개 폭) 떨어져 있다.
-// 그래서 판 폭보다 한참 작은 간격(화면 폭 4%)까지는 같은 판/붙은 판으로 합쳐도 된다.
+// 같은 행, 같은 색, 화면에서 붙어 있음 = 한 판이 앞 판에 일부 가려져 둘로 보이거나, 옆 칸 판 2개가 가까이 있는 것.
+// 칸 폭(A/3 ~= 0.467m) - 판 폭(0.40m) = ~0.07m 라 옆 칸 판 사이는 로봇이 못 지나가는 좁은 틈이거나, 한 칸 통째로 비어 있다.
+// 그래서 판 폭보다 한참 작은 간격(화면 폭 4%)까지는 같은 판/옆 칸 판으로 합쳐도 된다 (어차피 못 지나감).
 
 // 두 조각 사이가 아랫변 조금 위에서 같은 색으로 꽉 차 있으면 한 판 (아랫변에 홈이 파인 경우).
 // 너무 위를 보면, 한 칸 떨어진 같은 색 판 두 개 사이로 보이는 같은 색 뒤 판 때문에 빈 칸이 막힌 걸로 합쳐짐
@@ -499,17 +499,48 @@ void completeHidden(Result & r, const GapParams & g, int img_w)
 
 // ============================ 8) 빈 틈 ============================
 
-void findGap(Result & r, const CameraModel & cam, const GapParams & g, int img_w)
+// 앞 x(m) 에서 경기장 안쪽 범위 -> r.field_lo / field_hi (로봇 중심이 갈 수 있는 곳)
+// 선이 하나만 보이면 반대쪽 선은 경기장 폭만큼 떨어져 있다고 본다
+void fieldRange(Result & r, const FieldInfo & f, double x)
+{
+  r.field = f;
+  if (!f.valid) {return;}
+  double yl, yr;
+  if (f.left.found && f.right.found) {
+    yl = f.left.yAt(x);
+    yr = f.right.yAt(x);
+  } else if (f.left.found) {
+    yl = f.left.yAt(x);
+    yr = yl - f.width / std::cos(f.left.angle);
+  } else if (f.right.found) {
+    yr = f.right.yAt(x);
+    yl = yr + f.width / std::cos(f.right.angle);
+  } else {
+    return;
+  }
+  if (yl - yr < 2 * f.margin + 0.1) {return;}  // 선이 뒤바뀌었거나 너무 좁음 -> 안 믿음
+  r.field_used = true;
+  r.field_lo = yr + f.margin;
+  r.field_hi = yl - f.margin;
+}
+
+void findGap(Result & r, const CameraModel & cam, const GapParams & g, const FieldInfo & f, int img_w)
 {
   r.detected = !r.obstacles.empty();
+  if (r.detected) {r.nearest_x_m = r.rows[0].x_m;}
+  fieldRange(r, f, r.detected ? r.nearest_x_m : 1.0);
+
   if (!r.detected) {
-    // 앞에 아무것도 없음 -> 그대로 직진
+    // 앞에 아무것도 없음 -> 그대로 직진 (경계선에 붙어 있으면 안쪽으로)
     r.gap_found = true;
     r.gap_y_m = 0;
     r.gap_width_m = 2 * g.search_half_width;
+    if (r.field_used) {
+      r.gap_y_m = std::clamp(0.0, r.field_lo, r.field_hi);
+      r.gap_width_m = r.field_hi - r.field_lo;
+    }
     return;
   }
-  r.nearest_x_m = r.rows[0].x_m;
 
   // row 0 장애물이 막고 있는 좌우 구간 (로봇 반폭만큼 넓혀서).
   // 화면 끝에 걸린 판은 화면 밖으로 계속 이어진다고 본다
@@ -527,8 +558,20 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, int img_w
   // 화면 밖은 모르는 곳이라 빈 곳으로 치지 않는다
   const double half_fov_tan = (img_w / 2.0) / cam.fx;
   r.view_half_width = std::min(g.search_half_width, depthAt(r.nearest_x_m, cam) * half_fov_tan);
-  const double lo = -r.view_half_width;
-  const double hi = r.view_half_width;
+  double lo = -r.view_half_width;
+  double hi = r.view_half_width;
+  // 경기장 밖도 빈 곳으로 치지 않는다
+  if (r.field_used) {
+    lo = std::max(lo, r.field_lo);
+    hi = std::min(hi, r.field_hi);
+    if (lo >= hi) {
+      // 보이는 범위가 전부 경기장 밖 -> 경기장 안쪽으로 옆걸음
+      r.gap_found = false;
+      r.gap_y_m = std::clamp(0.0, r.field_lo, r.field_hi);
+      r.gap_width_m = 0;
+      return;
+    }
+  }
 
   // 막힌 구간 합치기 -> 사이사이가 빈 구간
   std::sort(blocked.begin(), blocked.end());
@@ -546,11 +589,12 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, int img_w
   }
 
   // 보이는 범위가 전부 막혔으면: 막힌 덩어리의 좌/우 끝 중 가까운 쪽을 가리킨다
-  // (한 행에 최대 2개라 옆걸음하면 빈 칸이 보이기 시작함)
+  // (한 행에 최대 2개라 옆걸음하면 빈 칸이 보이기 시작함). 경기장 밖으로 나가는 끝은 안 고름
   const double edge_l = std::max_element(blocked.begin(), blocked.end(),
       [](const auto & a, const auto & b) {return a.second < b.second;})->second;
   const double edge_r = blocked.front().first;
-  const bool l_ok = edge_l < INF / 2, r_ok = edge_r > -INF / 2;
+  const bool l_ok = edge_l < INF / 2 && (!r.field_used || edge_l <= r.field_hi);
+  const bool r_ok = edge_r > -INF / 2 && (!r.field_used || edge_r >= r.field_lo);
   if (l_ok && (!r_ok || std::abs(edge_l) < std::abs(edge_r))) {
     r.gap_y_m = edge_l;
   } else if (r_ok) {
@@ -580,7 +624,8 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, int img_w
 // ============================ 전체 ============================
 
 Result detect(
-  const cv::Mat & bgr, const ColorParams & cp, const CameraModel & cam, const GapParams & g)
+  const cv::Mat & bgr, const ColorParams & cp, const CameraModel & cam, const GapParams & g,
+  const FieldInfo & field)
 {
   Result r;
   const int H = bgr.rows;
@@ -683,7 +728,7 @@ Result detect(
     }
   }
 
-  findGap(r, cam, g, W);
+  findGap(r, cam, g, field, W);
   return r;
 }
 
@@ -716,6 +761,28 @@ cv::Mat drawResult(const cv::Mat & bgr, const Result & r, const CameraModel & ca
     }
     std::snprintf(buf, sizeof(buf), "row%zu x=%.2fm", i, r.rows[i].x_m);
     putLabel(img, buf, {img.cols - static_cast<int>(190 * sc), y - 6}, cv::Scalar(255, 255, 255), 0.55 * sc);
+  }
+
+  // line_vision 경계선 (보라) + 빈 틈 찾을 때 쓴 경기장 안쪽 끝 (row 0 거리에 보라 점)
+  if (r.field.valid) {
+    for (const FieldLine * l : {&r.field.left, &r.field.right}) {
+      if (!l->found) {continue;}
+      cv::Point a, b;
+      bool have_a = false;
+      for (double x = 0.3; x < 4.0; x += 0.1) {
+        if (!groundToPixel(x, l->yAt(x), cam, b)) {continue;}
+        if (have_a) {cv::line(img, a, b, cv::Scalar(255, 0, 200), 2);}
+        a = b;
+        have_a = true;
+      }
+    }
+  }
+  if (r.field_used) {
+    const double fx = r.detected ? r.nearest_x_m : 1.0;
+    for (double y : {r.field_lo, r.field_hi}) {
+      cv::Point p;
+      if (groundToPixel(fx, y, cam, p)) {cv::circle(img, p, 7, cv::Scalar(255, 0, 200), -1);}
+    }
   }
 
   int k0 = 0;  // row 0 라벨을 위아래로 엇갈려서 옆 판 라벨과 안 겹치게
@@ -758,7 +825,7 @@ cv::Mat drawResult(const cv::Mat & bgr, const Result & r, const CameraModel & ca
   }
 
   // 위쪽 정보 패널
-  const int ph = static_cast<int>(70 * sc);
+  const int ph = static_cast<int>(98 * sc);
   cv::rectangle(img, {0, 0}, {img.cols, ph}, cv::Scalar(0, 0, 0), -1);
   std::snprintf(buf, sizeof(buf), "obstacles: %zu  rows: %zu  row0 x: %.2fm",
     r.obstacles.size(), r.rows.size(), r.nearest_x_m);
@@ -772,6 +839,13 @@ cv::Mat drawResult(const cv::Mat & bgr, const Result & r, const CameraModel & ca
   }
   putLabel(img, buf, {8, static_cast<int>(60 * sc)},
     r.gap_found ? cv::Scalar(255, 255, 0) : cv::Scalar(0, 128, 255), 0.7 * sc);
+  if (r.field_used) {
+    std::snprintf(buf, sizeof(buf), "field: %s%s  in [%+.2f, %+.2f]m",
+      r.field.left.found ? "L" : "-", r.field.right.found ? "R" : "-", r.field_lo, r.field_hi);
+  } else {
+    std::snprintf(buf, sizeof(buf), "field: no lines (search +-%.1fm)", r.view_half_width);
+  }
+  putLabel(img, buf, {8, static_cast<int>(90 * sc)}, cv::Scalar(255, 0, 200), 0.6 * sc);
   return img;
 }
 

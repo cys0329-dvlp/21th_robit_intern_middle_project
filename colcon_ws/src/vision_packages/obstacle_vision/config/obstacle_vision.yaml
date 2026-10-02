@@ -33,9 +33,17 @@ obstacle_vision:
       split_jump_ratio: 0.02   # 옆 열과 아랫변이 화면 높이의 이 비율 이상 튀면 다른 판
 
     gap:
-      obstacle_width: 0.43
+      obstacle_width: 0.40
       row_tol_ratio: 0.25      # 거리 차이 > 가까운 쪽 거리 x 이 값 이면 다른 행 (비율이라 캘리브 스케일 오차에 강함)
-      robot_half_width: 0.20   # TODO: 로봇 어깨폭/2 + 여유
+      robot_half_width: 0.15   # 로봇 어깨폭(~0.20)/2 + 걸을 때 흔들림 여유 0.05
       search_half_width: 1.0
       max_range: 6.0           # 이보다 먼 건 무시 (m). 캘리브가 틀리면 먼 행이 멀게 나오니 여유 있게
       min_height: 0.05         # 보이는 높이가 이보다 낮으면 노이즈 (m)
+
+    field:                     # line_vision 경계선으로 경기장 밖 빈 틈 막기
+      use_lines: true          # false 면 예전처럼 (화면에 보이는 범위 전부에서 빈 틈)
+      topic: "/vision/field_lines"
+      timeout_s: 0.5           # 이보다 오래된 경계선은 안 씀 (line_vision 꺼져 있으면 예전처럼 동작)
+      max_line_angle_deg: 60.0 # 로봇 정면과 이보다 많이 틀어진 선은 안 믿음
+      width: 1.4               # 경기장 폭 A. 선이 하나만 보일 때 반대쪽 선 위치 계산용
+      margin: 0.20             # 빈 틈 목표(로봇 중심)가 선에서 이만큼 안쪽이어야 함. 칸 중심은 선에서 A/6 ~= 0.233
