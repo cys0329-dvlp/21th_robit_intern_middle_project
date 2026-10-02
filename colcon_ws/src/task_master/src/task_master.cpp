@@ -129,12 +129,28 @@ void TaskMaster::tick()
 
 void TaskMaster::onInitial()
 {
+  if(state_changed_)
+  {
+    system("nohup bash -c "
+      "'source ~/colcon_ws/install/setup.bash && "
+      "ros2 launch dynamixel_hardware_interface dynamixel_hardware.launch.py' "
+      "> /tmp/dynamixel.log 2>&1 &"
+    );
+  }
   stopWalk();
 }
 
 void TaskMaster::onReady()
 {
-  // TODO: 시작 위치로 이동 (game_.position, game_.myside, game_.iskickoff 참고)
+  if (state_changed_) {
+    system(
+      "nohup bash -c "
+      "'source ~/tune_ws/install/setup.bash && "
+      "ros2 run ik_walk ik_walk' "
+      "> /tmp/ik_walk.log 2>&1 &"
+    );
+  }
+
   stopWalk();
 }
 
@@ -152,11 +168,11 @@ void TaskMaster::onPlaying()
     }
     else if(gap_found_ && gap_y_m_ < 0)
     {
-      leftwalk();
+      stopWalk();
     }
     else if(gap_found_ && gap_y_m_ > 0)
     {
-      rightwalk();
+      stopWalk();
     }
   }
   
