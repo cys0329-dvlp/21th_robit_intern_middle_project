@@ -213,6 +213,10 @@ PanTiltCamera::on_activate(const rclcpp_lifecycle::State &)
         sensor_msgs::msg::Image::SharedPtr compressed_img_msg =
           cv_bridge::CvImage(header, "bgr8", frame).toImageMsg();
         compressed_image_pub_->publish(*compressed_img_msg);
+
+        image_width = frame.cols;
+        image_height = frame.rows;
+
       }
       publish_camera_info(header);
       publish_compressed_camera_info(header);

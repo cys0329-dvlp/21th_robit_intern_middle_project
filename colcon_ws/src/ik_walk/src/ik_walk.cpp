@@ -47,8 +47,9 @@ void IKwalk::get_parameters()
 {
 
   std::string addr;
-  addr = "/home/robit/tune_ws/src/tune_walk/work/10-27";
+  addr = "/home/robit/Desktop/1/task_master/colcon_ws/src/tune_walk/work/10-27";
 
+  
   std::ifstream is(addr.c_str());
 
   if (!(is.is_open())) // nuc 6

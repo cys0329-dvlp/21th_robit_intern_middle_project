@@ -72,6 +72,10 @@ public:
       declare_parameter<double>("gap.search_half_width", gp_.search_half_width);
     gp_.max_range = declare_parameter<double>("gap.max_range", gp_.max_range);
     gp_.min_height = declare_parameter<double>("gap.min_height", gp_.min_height);
+    gp_.near_x_m = declare_parameter<double>("gap.near_x_m", gp_.near_x_m);
+    gp_.robot_min_half_width =
+      declare_parameter<double>("gap.robot_min_half_width", gp_.robot_min_half_width);
+    gp_.row_spacing = declare_parameter<double>("gap.row_spacing", gp_.row_spacing);
 
     // ---------------- 경기장 경계선 (line_vision) ----------------
     use_field_ = declare_parameter<bool>("field.use_lines", true);

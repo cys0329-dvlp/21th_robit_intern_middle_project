@@ -1,3 +1,4 @@
+#include <cmath>
 #include "task_master/task_master.hpp"
 #include "vision_interfaces/msg/obstacle_array.hpp"
 #include <chrono>
@@ -15,17 +16,18 @@ TaskMaster::TaskMaster()
 
   // 방향별 보행 명령값 (하드웨어 좌우 편차 보정용, ik_walk 의 Tuning_Side 가 추가로 더해짐)
   straight_cmd_ = {
-    declare_parameter<double>("walk.straight.x", 10.0),
+    declare_parameter<double>("walk.straight.x", 12.5),
     declare_parameter<double>("walk.straight.y", 0.0),
     declare_parameter<double>("walk.straight.yaw", 0.0)};
   left_cmd_ = {
-    declare_parameter<double>("walk.left.x", 0.0),
-    declare_parameter<double>("walk.left.y", 7.0),
+    declare_parameter<double>("walk.left.x", 1.5),
+    declare_parameter<double>("walk.left.y", 9.5),
     declare_parameter<double>("walk.left.yaw", 0.0)};
   right_cmd_ = {
     declare_parameter<double>("walk.right.x", 0.0),
-    declare_parameter<double>("walk.right.y", -7.0),
+    declare_parameter<double>("walk.right.y", -6.5),
     declare_parameter<double>("walk.right.yaw", 0.0)};
+  avoid_dist_m_ = declare_parameter<double>("avoid_dist_m", 0.90);
 
   const auto gamecontrol_topic =
     declare_parameter<std::string>("topics.gamecontrol_sub", "gamecontroldata");
@@ -95,6 +97,8 @@ void TaskMaster::visionCallback(const vision_interfaces::msg::ObstacleArray::Sha
 {
   gap_found_ = msg->gap_found;
   gap_y_m_ = msg->gap_y_m;
+  detected_ = msg->detected;
+  nearest_x_m_ = msg->nearest_x_m;
 
   obstacle_data_received_ = true;
 }
@@ -153,7 +157,7 @@ void TaskMaster::onReady()
   if(state_changed_ && std::system("pgrep -f '[d]ynamixel_hardware_interface_node' > /dev/null") != 0)
   {
     std::system("nohup bash -c "
-      "'source /home/robit/Desktop/task_master/colcon_ws/install/setup.bash && "
+      "'source /home/robit/Desktop/1/task_master/colcon_ws/install/setup.bash && "
       "ros2 launch dynamixel_hardware_interface dynamixel_hardware.launch.py' "
       "> /tmp/dynamixel.log 2>&1 &"
     );
@@ -168,7 +172,7 @@ void TaskMaster::onSet()
   if (state_changed_ && std::system("pgrep -x ik_walk > /dev/null") != 0) {
     std::system(
       "nohup bash -c "
-      "'source /home/robit/Desktop/task_master/colcon_ws/install/setup.bash && "
+      "'source /home/robit/Desktop/1/task_master/colcon_ws/install/setup.bash && "
       "ros2 run ik_walk ik_walk' "
       "> /tmp/ik_walk.log 2>&1 &"
     );
@@ -179,18 +183,47 @@ void TaskMaster::onSet()
 
 void TaskMaster::onPlaying()
 {
-    if(gap_found_ && gap_y_m_ == 0)
+    // 장애물이 없거나 아직 멀면 그냥 직진. 멀 때 옆걸음해 버리면 다가가는 동안 판이 화면 밖으로
+    // 빠져서 안 보이게 되고, 그 상태로 직진하다 부딪힘 -> 가까이 와서 (판이 잘 보일 때) 피한다
+    if(!detected_ || nearest_x_m_ > avoid_dist_m_)
     {
+      logDecision("STRAIGHT (far)");
+      walk();
+      return;
+    }
+
+    // gap_y 는 빈 틈 가운데라 딱 0 이 안 나옴 -> 이 안이면 정면으로 봄 (화면 STRAIGHT 와 같은 값)
+    const float kStraightBand = 0.05;
+    if(gap_found_ && -kStraightBand < std::abs(gap_y_m_) && std::abs(gap_y_m_) < kStraightBand)
+    {
+      logDecision("STRAIGHT");
       walk();
     }
-    else if(gap_found_ && gap_y_m_ < 0) //마이너스 -> 우횡진
+    else if(gap_y_m_ <= -kStraightBand) //마이너스 -> 우횡진 (전부 막혀도 gap_y 쪽으로 옆걸음)
     {
+      logDecision("RIGHT");
       rightwalk();
     }
-    else if(gap_found_ && 0 < gap_y_m_) // 플러스 -> 좌횡진
+    else if(kStraightBand <= gap_y_m_) // 플러스 -> 좌횡진
     {
+      logDecision("LEFT");
       leftwalk();
     }
+    else
+    {
+      logDecision("STOP");
+      stopWalk();  // 전부 막혔는데 갈 쪽도 없음. 명령 안 보내면 ik_walk 가 직전 명령을 계속함
+    }
+}
+
+// 보행 판단이 바뀔 때만 로그 (매 tick 찍으면 너무 많음). 명령이 자주 뒤집히는지 볼 때 씀
+void TaskMaster::logDecision(const char * decision)
+{
+  if (last_decision_ == decision) {return;}
+  last_decision_ = decision;
+  RCLCPP_INFO(
+    get_logger(), "walk: %s  (row0 x=%.2fm, gap_y=%+.2fm, gap_found=%d)",
+    decision, nearest_x_m_, gap_y_m_, gap_found_);
 }
   
 void TaskMaster::onFinished()

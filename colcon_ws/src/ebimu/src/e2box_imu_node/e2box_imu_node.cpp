@@ -393,11 +393,11 @@ void E2BoxIMUNode::publishEulerData()
 
   humanoid_interfaces::msg::ImuMsg imu_data;
   imu_data.roll  = raw_roll_deg_  + roll_offset_;
-  double pitch_val = raw_pitch_deg_ + pitch_offset_;
+  double pitch_val = raw_pitch_deg_;
   if (pitch_val > 180.0) pitch_val -= 360.0;
   else if (pitch_val < -180.0) pitch_val += 360.0;
   imu_data.pitch = pitch_val;
-  imu_data.yaw   = filtered_yaw_deg + yaw_offset_;
+  imu_data.yaw   = filtered_yaw_deg;
   imu_data.reset_desire_yaw = reset_desire_yaw_pending_;
 
   imu_Pub->publish(imu_data);
