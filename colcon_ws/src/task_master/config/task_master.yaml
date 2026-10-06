@@ -16,6 +16,8 @@
     # 방향별 보행 명령 (master2ik 단위). ik_walk 파라미터 파일의 Tuning_Side(-1.5)가 y 에 추가로 더해짐
     # 좌횡진이 약하면 walk.left.y 를 키우고, 직진 중 옆으로 밀리면 walk.straight.y 로 상쇄
     # 주의: |y| >= 10 이면 ik_walk 가 보행 주기를 줄이는 모드로 들어감
+    avoid_dist_m: 0.90   # row 0 이 이보다 가까울 때만 피함 (멀면 직진). 전진 감속에 몇 걸음 걸리니 판 아랫변이 보일 때(>0.42m) 옆걸음을 끝낼 만큼 여유
+
     walk:
       straight: {x: 10.0, y: 0.0, yaw: 0.0}
       left:     {x: 0.0,  y: 7.0, yaw: 0.0}   # Tuning_Side -1.5 포함 실효 +8.0 (우횡진 실효 -8.5)

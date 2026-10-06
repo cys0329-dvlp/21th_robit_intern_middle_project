@@ -53,6 +53,7 @@ private:
   void rightwalk();
   void leftwalk();
   void stopWalk();
+  void logDecision(const char * decision);
 
   struct WalkCmd
   {
@@ -95,6 +96,10 @@ private:
   //Vision에서 받은 장애물 통과 정보
   bool gap_found_ = true;
   float gap_y_m_ = 0.0;
+  bool detected_ = false;
+  float nearest_x_m_ = 0.0;     // row 0 까지 거리 (m)
+  double avoid_dist_m_ = 0.90;  // row 0 이 이보다 가까울 때만 gap 명령을 따름
+  std::string last_decision_;    // 마지막 보행 판단 (로그용)
   bool obstacle_data_received_ = false;
   
 };

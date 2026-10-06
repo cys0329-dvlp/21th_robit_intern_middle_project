@@ -71,8 +71,11 @@ struct GapParams
   double obstacle_width = 0.40;    // 장애물 실제 폭 (m)
   double row_tol_ratio = 0.25;     // 거리 차이가 (가까운 쪽 거리 x 이 값) 보다 크면 다른 행
                                    // 비율이라 캘리브레이션 스케일이 틀려도 행 구분은 유지됨
-  double robot_half_width = 0.15;  // 장애물 양옆으로 이만큼 더 막힌 걸로 봄 (로봇 반폭 + 여유)
+  double robot_half_width = 0.20;  // 장애물 양옆으로 이만큼 더 막힌 걸로 봄 (로봇 반폭 0.13 + 여유)
+  double robot_min_half_width = 0.14;  // 여유 넣고 빈 틈이 없을 때 이것(로봇 몸 반폭 + 최소 여유)으로 한 번 더 찾음
   double search_half_width = 1.0;  // 좌우 이 범위 안에서만 빈 틈을 찾음 (m)
+  double row_spacing = 1.0;        // 행 사이 거리 (m). row 0 아랫변이 잘렸을 때 row 1 거리 - 이 값으로 추정
+  double near_x_m = 0.25;          // 아랫변이 잘린 판이 있을 수 있는 가장 가까운 거리 (m, 로봇 발끝 앞)
   double max_range = 6.0;          // 이보다 먼 건 무시 (m). 캘리브가 틀리면 먼 행이 멀게 나오니 여유 있게
   double min_height = 0.05;        // 보이는 높이가 이보다 낮으면 노이즈 (바닥에 붙은 테이프 등, m)
   int edge_margin_px = 3;          // 화면 끝에서 이 안이면 잘린 걸로 봄

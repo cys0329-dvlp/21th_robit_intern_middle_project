@@ -404,6 +404,25 @@ void assignRows(Result & r, const GapParams & g)
   for (auto & o : r.obstacles) {o.row = rank[o.row];}
 }
 
+// row 0 판 아랫변이 전부 화면 밑으로 잘렸으면 거리를 모름 (화면 맨 아래 거리 ~0.42m 로 나옴).
+// 행 간격이 거의 일정하니 (row_spacing), 바닥 접점이 보이는 row 1 거리 - row_spacing 으로 추정
+void estimateCutRow0(Result & r, const GapParams & g, const CameraModel & cam)
+{
+  if (r.rows.size() < 2 || g.row_spacing <= 0) {return;}
+  bool all_cut = true, row1_ground = false;
+  for (const auto & o : r.obstacles) {
+    if (o.row == 0 && o.bottom != CUT) {all_cut = false;}
+    if (o.row == 1 && o.bottom == GROUND) {row1_ground = true;}
+  }
+  if (!all_cut || !row1_ground) {return;}
+  const double est = r.rows[1].x_m - g.row_spacing;
+  if (est < 0.1 || est >= r.rows[0].x_m) {return;}  // 말이 안 되면 (행을 잘못 나눴거나) 안 씀
+  r.rows[0].x_m = est;
+  for (auto & o : r.obstacles) {
+    if (o.row == 0 && o.x_m > est) {setAtDistance(o, est, cam);}
+  }
+}
+
 // ============================ 7) 같은 행 조각 합치기 ============================
 // 같은 행, 같은 색, 화면에서 붙어 있음 = 한 판이 앞 판에 일부 가려져 둘로 보이거나, 옆 칸 판 2개가 가까이 있는 것.
 // 칸 폭(A/3 ~= 0.467m) - 판 폭(0.40m) = ~0.07m 라 옆 칸 판 사이는 로봇이 못 지나가는 좁은 틈이거나, 한 칸 통째로 비어 있다.
@@ -542,18 +561,31 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, const Fie
     return;
   }
 
-  // row 0 장애물이 막고 있는 좌우 구간 (로봇 반폭만큼 넓혀서).
+  // row 0 장애물이 막고 있는 좌우 구간 (로봇 반폭 half_w 만큼 넓혀서).
   // 화면 끝에 걸린 판은 화면 밖으로 계속 이어진다고 본다
   constexpr double INF = 1e3;
-  std::vector<std::pair<double, double>> blocked;
-  for (const auto & o : r.obstacles) {
-    if (o.row != 0) {continue;}
-    const double half = o.width_m / 2 + g.robot_half_width;
-    double lo = o.y_m - half, hi = o.y_m + half;
-    if (o.cut_left) {hi = INF;}    // 화면 왼쪽 = +y
-    if (o.cut_right) {lo = -INF;}
-    blocked.push_back({lo, hi});
-  }
+  auto blockedFor = [&](double half_w) {
+      std::vector<std::pair<double, double>> blocked;
+      for (const auto & o : r.obstacles) {
+        if (o.row != 0) {continue;}
+        const double half = o.width_m / 2 + half_w;
+        double lo = o.y_m - half, hi = o.y_m + half;
+        if (o.bottom == CUT) {
+          // 아랫변이 화면 밑으로 잘림 -> 진짜 거리는 x_m 보다 가까울 수 있음 (near_x_m 까지).
+          // 가까울수록 같은 픽셀이 정면 쪽에 있으므로 near_x_m 에서의 좌우 끝도 막힌 걸로 친다
+          const double zn = depthAt(std::min(g.near_x_m, o.x_m), cam);
+          const double yl = -zn * (o.box.x - cam.cx) / cam.fx;
+          const double yr = -zn * (o.box.x + o.box.width - cam.cx) / cam.fx;
+          lo = std::min(lo, yr - half_w);
+          hi = std::max(hi, yl + half_w);
+        }
+        if (o.cut_left) {hi = INF;}    // 화면 왼쪽 = +y
+        if (o.cut_right) {lo = -INF;}
+        blocked.push_back({lo, hi});
+      }
+      std::sort(blocked.begin(), blocked.end());
+      return blocked;
+    };
 
   // 화면 밖은 모르는 곳이라 빈 곳으로 치지 않는다
   const double half_fov_tan = (img_w / 2.0) / cam.fx;
@@ -574,18 +606,30 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, const Fie
   }
 
   // 막힌 구간 합치기 -> 사이사이가 빈 구간
-  std::sort(blocked.begin(), blocked.end());
-  std::vector<std::pair<double, double>> free_iv;
-  double cur = lo;
-  for (const auto & b : blocked) {
-    if (b.first > cur) {
-      free_iv.push_back({cur, std::min(b.first, hi)});
-    }
-    cur = std::max(cur, b.second);
-    if (cur >= hi) {break;}
-  }
-  if (cur < hi) {
-    free_iv.push_back({cur, hi});
+  auto freeOf = [&](const std::vector<std::pair<double, double>> & blocked) {
+      std::vector<std::pair<double, double>> free_iv;
+      double cur = lo;
+      for (const auto & b : blocked) {
+        if (b.first > cur) {
+          free_iv.push_back({cur, std::min(b.first, hi)});
+        }
+        cur = std::max(cur, b.second);
+        if (cur >= hi) {break;}
+      }
+      if (cur < hi) {
+        free_iv.push_back({cur, hi});
+      }
+      return free_iv;
+    };
+  const auto blocked = blockedFor(g.robot_half_width);
+  auto free_iv = freeOf(blocked);
+  auto hasFree = [](const auto & iv) {
+      return std::any_of(iv.begin(), iv.end(), [](const auto & f) {return f.second > f.first;});
+    };
+  if (!hasFree(free_iv) && g.robot_min_half_width < g.robot_half_width) {
+    // 여유까지 넣으면 안 맞지만 로봇 몸만은 들어가는 틈 (판 사이를 지나는 중일 때 등).
+    // 멈추면 판 사이에 끼므로 그 틈 가운데로 간다 (가운데라 양쪽 여유가 제일 큼)
+    free_iv = freeOf(blockedFor(g.robot_min_half_width));
   }
 
   // 보이는 범위가 전부 막혔으면: 막힌 덩어리의 좌/우 끝 중 가까운 쪽을 가리킨다
@@ -599,21 +643,25 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, const Fie
     r.gap_y_m = edge_l;
   } else if (r_ok) {
     r.gap_y_m = edge_r;
+  } else if (r.field_used && edge_l < INF / 2 && edge_r > -INF / 2) {
+    // 양쪽 끝 다 경기장 밖 -> 덜 삐져나가는 쪽 (그쪽이 판과 선 사이가 더 넓음), 경기장 안까지만
+    r.gap_y_m = (edge_l - r.field_hi < r.field_lo - edge_r) ? r.field_hi : r.field_lo;
   } else {
     r.gap_y_m = 0;  // 양쪽 다 화면 밖까지 막힘 -> 한 발 물러서서 다시 봐야 함
   }
   r.gap_width_m = 0;
 
-  // 빈 구간 중 정면(0)에서 가장 가까운 점 = 옆걸음이 제일 적게 드는 곳
+  // 빈 구간 중 정면(0)에서 제일 가까운 구간 (옆걸음이 제일 적게 드는 곳) 을 고르고,
+  // 목표는 그 구간의 가운데 (끝에 붙으면 걷다 흔들려서 판에 박음)
   r.gap_found = false;
   double best = 1e9;
   for (const auto & f : free_iv) {
     if (f.second <= f.first) {continue;}
-    const double target = std::clamp(0.0, f.first, f.second);
-    if (std::abs(target) < std::abs(best)) {
-      best = target;
+    const double d = std::abs(std::clamp(0.0, f.first, f.second));
+    if (d < best) {
+      best = d;
       r.gap_found = true;
-      r.gap_y_m = target;
+      r.gap_y_m = (f.first + f.second) / 2;
       r.gap_width_m = f.second - f.first;
     }
   }
@@ -702,6 +750,7 @@ Result detect(
     for (auto & o : r.obstacles) {
       if (o.bottom == OCCLUDED) {setAtDistance(o, r.rows[o.row].x_m, cam);}
     }
+    estimateCutRow0(r, g, cam);
     mergeRow(r, cam, W);
     completeHidden(r, g, W);
     for (auto & o : r.obstacles) {
@@ -834,8 +883,8 @@ cv::Mat drawResult(const cv::Mat & bgr, const Result & r, const CameraModel & ca
     std::snprintf(buf, sizeof(buf), "gap_y: %+.2fm (%s)  width %.2fm", r.gap_y_m,
       std::abs(r.gap_y_m) < 0.05 ? "STRAIGHT" : (r.gap_y_m > 0 ? "LEFT" : "RIGHT"), r.gap_width_m);
   } else {
-    std::snprintf(buf, sizeof(buf), "BLOCKED -> step %s (%+.2fm)",
-      r.gap_y_m > 0 ? "LEFT" : "RIGHT", r.gap_y_m);
+    std::snprintf(buf, sizeof(buf), "BLOCKED -> %s (%+.2fm)",
+      r.gap_y_m == 0 ? "STOP" : (r.gap_y_m > 0 ? "step LEFT" : "step RIGHT"), r.gap_y_m);
   }
   putLabel(img, buf, {8, static_cast<int>(60 * sc)},
     r.gap_found ? cv::Scalar(255, 255, 0) : cv::Scalar(0, 128, 255), 0.7 * sc);
