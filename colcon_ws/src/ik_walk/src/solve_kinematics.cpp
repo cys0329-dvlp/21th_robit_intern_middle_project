@@ -584,7 +584,6 @@ void IK_Solve::motor_packet(int body, int limit)
     Motor_Info.profile_velocity = vel;
     DXL.motor_control.push_back(Motor_Info);
   }
-
   Motor_Pub->publish(DXL);
   auto t2r = [](unsigned int t) {
     return (static_cast<double>(t) / 4096.0) * (2.0 * M_PI) - M_PI;
