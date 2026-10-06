@@ -575,6 +575,15 @@ void IK_Solve::motor_packet(int body, int limit)
   }
   // 22번 모터 제외 (사용하지 않음)
 
+  // [fix] 드라이버 설정(ID 10~22, 13개) 순서에 맞춰 다시 채움
+  DXL.motor_control.clear();
+  for (int i = 10; i <= 22; i++)
+  {
+    double radpos = ((static_cast<double>(g_DXL_ID_position[i])) / 4096) * (2 * M_PI) - M_PI;
+    Motor_Info.goal_position = float(radpos);
+    Motor_Info.profile_velocity = vel;
+    DXL.motor_control.push_back(Motor_Info);
+  }
   Motor_Pub->publish(DXL);
   auto t2r = [](unsigned int t) {
     return (static_cast<double>(t) / 4096.0) * (2.0 * M_PI) - M_PI;

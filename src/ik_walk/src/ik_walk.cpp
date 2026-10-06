@@ -47,7 +47,7 @@ void IKwalk::get_parameters()
 {
 
   std::string addr;
-  addr = "work 파일 경로 "; // ******************************************
+  addr = "/home/robit/tune_ws/src/tune_walk/work/10-27";
 
   std::ifstream is(addr.c_str());
 
