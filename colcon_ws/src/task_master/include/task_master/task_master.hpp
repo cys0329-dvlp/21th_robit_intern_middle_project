@@ -126,7 +126,7 @@ private:
   rclcpp::Time dir_since_;           // cur_dir_ 로 바꾼 시각
   double line_keep_dist_m_ = 0.3;  // 직진 중 경계선이 이보다 가까우면 반대쪽으로 옆걸음
 
-  // 선이 양쪽 다 사라졌을 때: 사라지기 직전에 보였던 선의 반대쪽으로 line_lost_side_sec 동안 횡진
+  // 선이 양쪽 다 사라졌을 때: 직전에 한쪽 선만 보였으면 그 반대쪽으로 line_lost_side_sec 동안 횡진 후 직진 (양쪽 다 보였으면 바로 직진)
   bool seen_left_ = false;                 // 선이 보이던 마지막 tick 의 left_found
   bool seen_right_ = false;                // 선이 보이던 마지막 tick 의 right_found
   WalkDir lost_side_dir_ = WalkDir::STRAIGHT;  // 진행 중인 횡진 방향, STRAIGHT 면 없음

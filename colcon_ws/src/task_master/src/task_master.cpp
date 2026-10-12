@@ -217,6 +217,35 @@ void TaskMaster::onPlaying()
       seen_right_ = false;
     }
 
+    // 선이 하나라도 보이면 어느 쪽이 보였는지 기억하기
+    if(left_found || right_found)
+    {
+      seen_left_ = left_found;
+      seen_right_ = right_found;
+      lost_side_dir_ = WalkDir::STRAIGHT;
+    }
+    else
+    {
+      // 방금 양쪽 다 사라짐 -> 마지막에 한쪽 선만 보였으면 그 반대쪽으로 횡진.
+      // 마지막에 양쪽 다 보였으면 횡진 없이 아래 로직(직진)으로 넘어감
+      if(lost_side_dir_ == WalkDir::STRAIGHT && seen_left_ != seen_right_)
+      {
+        lost_side_dir_ = seen_left_ ? WalkDir::RIGHT : WalkDir::LEFT;
+        lost_since_ = now();
+      }
+      seen_left_ = false;  // 선이 다시 보이면 그거에 맞춰서 로직 실행하도록
+      seen_right_ = false;
+
+      if(lost_side_dir_ != WalkDir::STRAIGHT && (now() - lost_since_).seconds() < line_lost_side_sec_)
+      {
+        moveDir(lost_side_dir_, lost_side_dir_ == WalkDir::RIGHT ? "RIGHT (lost)" : "LEFT (lost)");
+        // direction_hold_sec 때문에 아직 횡진으로 못 바꿨으면 실제로 횡진을 시작할 때부터 시간을 셈
+        if(cur_dir_ != lost_side_dir_) {lost_since_ = now();}
+        return;
+      }
+      // line_lost_side_sec 가 지나면 아래 로직으로 -> 장애물 없으면 직진
+    }
+
     // 장애물이 없거나 아직 멀면 그냥 직진. 멀 때 옆걸음해 버리면 다가가는 동안 판이 화면 밖으로
     // 빠져서 안 보이게 되고, 그 상태로 직진하다 부딪힘 -> 가까이 와서 (판이 잘 보일 때) 피한다
     if(!detected_ || nearest_x_m_ > avoid_dist_m_)
@@ -261,30 +290,6 @@ void TaskMaster::onPlaying()
       return;
     }
 
-    // 선이 하나도 한보이면 어느 쪽이 보였는지 기억하기 
-    if(left_found || right_found)
-    {
-      seen_left_ = left_found;
-      seen_right_ = right_found;
-      lost_side_dir_ = WalkDir::STRAIGHT;
-    }
-    else
-    {
-      //방금 양쪽 다 사라잠 -> 마지막으로 보인 선의 반대쪽으로 횡진
-      if(lost_side_dir_ == WalkDir::STRAIGHT && (seen_left_ || seen_right_))
-      {
-        lost_side_dir_ = seen_left_ ? WalkDir::RIGHT : WalkDir::LEFT;
-        lost_since_ = now();
-        seen_left_ = false; //선이 다시 보이면 그거에 맞춰서 로직 실행하도록
-        seen_right_ = false;
-      } 
-
-      if(lost_side_dir_ != WalkDir::STRAIGHT && (now() - lost_since_).seconds() < 1.0)
-      {
-        moveDir(lost_side_dir_, lost_side_dir_ == WalkDir::RIGHT ? "RIGHT (lost)" : "LEFT (lost)");
-        return;
-      }
-    }
     // gap_y 는 빈 틈 가운데라 딱 0 이 안 나옴 -> 이 안이면 정면으로 봄 (화면 STRAIGHT 와 같은 값)
     const float kStraightBand = 0.05;
     if(gap_found_ && -kStraightBand < std::abs(gap_y_m_) && std::abs(gap_y_m_) < kStraightBand)
