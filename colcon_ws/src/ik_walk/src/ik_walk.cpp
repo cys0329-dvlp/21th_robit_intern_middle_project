@@ -47,7 +47,7 @@ void IKwalk::get_parameters()
 {
 
   std::string addr;
-  addr = "/home/robit/Desktop/1/task_master/colcon_ws/src/tune_walk/work/10-27";
+  addr = "/home/robit/tune_ws/src/tune_walk/work/10-26(given)";
 
   
   std::ifstream is(addr.c_str());
@@ -247,7 +247,7 @@ void IKwalk::get_parameters()
   Balance.Balance_Ankle_Pitch_Flag = false;
   Balance.Balance_Pitch_Flag = true;
   Balance.Balance_Roll_Flag = true;
-  Balance.Balance_Pitch_Flag_imu = true;
+  Balance.Balance_Pitch_Flag_imu = false;
   Balance.Balance_Roll_Flag_imu = false;
 
   // Default//

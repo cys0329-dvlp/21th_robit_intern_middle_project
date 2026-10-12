@@ -33,6 +33,8 @@ MainWindow::MainWindow(int argc, char** argv, QWidget *parent) : QMainWindow(par
     this->setWindowIcon(icon);
 
     QObject::connect(qnode, SIGNAL(rosShutDown()), this, SLOT(close()));
+    QObject::connect(qnode, SIGNAL(walkDecision(QString)), this, SLOT(onWalkDecision(QString)));
+    QObject::connect(qnode, SIGNAL(lineStatus(QString)), this, SLOT(onLineStatus(QString)));
 
     pub_timer = new QTimer(this);
     QObject::connect(pub_timer, SIGNAL(timeout()), this, SLOT(Pub_msg()));
@@ -46,9 +48,56 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 MainWindow::~MainWindow()
 {
+    for (const QString& key : launchProcs.keys())
+        toggleLaunch(key, {}, false);
+
     delete ui;
     delete m_pReadSocket;
     delete m_pSendSocket;
+}
+
+void MainWindow::toggleLaunch(const QString& key, const QStringList& args, bool on)
+{
+    if (on)
+    {
+        if (launchProcs.contains(key)) return;
+        QProcess* p = new QProcess(this);
+        p->setProcessChannelMode(QProcess::ForwardedChannels); // 로그를 gamecontroller 터미널에 출력
+        p->start("ros2", args);
+        launchProcs[key] = p;
+    }
+    else
+    {
+        if (!launchProcs.contains(key)) return;
+        QProcess* p = launchProcs.take(key);
+        p->terminate(); // ros2 launch 에 SIGTERM -> 자식 노드까지 정리
+        if (!p->waitForFinished(3000)) p->kill();
+        p->deleteLater();
+    }
+}
+
+void MainWindow::on_btn_line_vision_toggled(bool on)
+{
+    toggleLaunch("line_vision", {"launch", "line_vision", "line_vision.launch.py"}, on);
+    ui->btn_line_vision->setText(on ? "Line Vision (ON)" : "Line Vision");
+}
+
+void MainWindow::on_btn_obstacle_vision_toggled(bool on)
+{
+    toggleLaunch("obstacle_vision", {"launch", "obstacle_vision", "obstacle_vision.launch.py"}, on);
+    ui->btn_obstacle_vision->setText(on ? "Obstacle Vision (ON)" : "Obstacle Vision");
+}
+
+void MainWindow::on_btn_imu_toggled(bool on)
+{
+    toggleLaunch("imu", {"launch", "ebimu", "e2box_imu_9dofv4.launch.py"}, on);
+    ui->btn_imu->setText(on ? "IMU (ON)" : "IMU");
+}
+
+void MainWindow::on_btn_task_master_toggled(bool on)
+{
+    toggleLaunch("task_master", {"launch", "task_master", "task_master.launch.py"}, on);
+    ui->btn_task_master->setText(on ? "Task Master (ON)" : "Task Master");
 }
 
 bool MainWindow::initAddrAndPort()
@@ -150,7 +199,8 @@ void MainWindow::closeSocket()
     ui->checkBox_side->setText("Left (first half)");
 
     disconnect(m_pReadSocket, SIGNAL(readyRead()), this, SLOT(readData()));
-    ui->textEdit->clear();
+    hasGameData = false;  // 닫으면 경기 정보는 지우고 보행 로그만 남김
+    redrawText();
 
     ui->Server_Open->setText("OPEN");
 
@@ -372,7 +422,8 @@ void MainWindow::readData()
 
         qnode->gamecontrollerPub->publish(qnode->gameControlData);
 
-        uiUpdate();
+        hasGameData = true;
+        redrawText();
     }
     qnode->gameControlData.robotnum = playerNum + 1;
 }
@@ -536,6 +587,48 @@ void MainWindow::uiUpdate()
         ui->textEdit->append("secondary: NORMAL");
         break;
     }
+}
+
+// textEdit 을 경기 정보 + 보행 판단 로그로 다시 그림
+void MainWindow::redrawText()
+{
+    ui->textEdit->clear();
+    if (hasGameData)
+    {
+        uiUpdate();
+    }
+    if (!walkLog.isEmpty() || !lineStatusText.isEmpty())
+    {
+        ui->textEdit->append("----- WALK -----");
+        if (!lineStatusText.isEmpty())
+        {
+            ui->textEdit->append(lineStatusText);
+        }
+        for (const QString & line : walkLog)
+        {
+            ui->textEdit->append(line);
+        }
+    }
+}
+
+void MainWindow::onWalkDecision(QString text)
+{
+    walkLog.append("[" + QTime::currentTime().toString("hh:mm:ss") + "] " + text);
+    while (walkLog.size() > WALK_LOG_MAX)
+    {
+        walkLog.removeFirst();
+    }
+    redrawText();
+}
+
+void MainWindow::onLineStatus(QString text)
+{
+    if (text == lineStatusText)
+    {
+        return;  // 값이 같으면 다시 안 그림 (0.1초마다 깜빡이지 않게)
+    }
+    lineStatusText = text;
+    redrawText();
 }
 
 void MainWindow::GameController_callback()

@@ -1,6 +1,8 @@
 /**:
   ros__parameters:
    pub_topic: "gamecontroldata"
+   walk_decision_topic: "walk_decision"   # task_master 보행 판단 로그 (textEdit 에 표시)
+   line_status_topic: "line_status"       # task_master 0.1초 상태 줄 (line_keep_dist_m + 선 거리)
    TEAM_ROBIT_NUMBER: 21
    TEAM_ROBIT_RED : 22
    TEAM_ROBIT_BLUE : 23

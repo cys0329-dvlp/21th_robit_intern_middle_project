@@ -18,6 +18,8 @@ QNode::QNode(int argc, char** argv)
   node = rclcpp::Node::make_shared("gamecontroller");
 
   node->declare_parameter("pub_topic", std::string("gamecontroldata"));
+  node->declare_parameter("walk_decision_topic", std::string("walk_decision"));
+  node->declare_parameter("line_status_topic", std::string("line_status"));
   node->declare_parameter("TEAM_ROBIT_NUMBER", 4);
   node->declare_parameter("TEAM_ROBIT_RED", 22);
   node->declare_parameter("TEAM_ROBIT_BLUE", 23);
@@ -25,6 +27,8 @@ QNode::QNode(int argc, char** argv)
   node->declare_parameter("GAMECONTROLLER_RETURN_PORT", 3939);
 
   pubTopic = node->get_parameter("pub_topic").as_string();
+  walkDecisionTopic = node->get_parameter("walk_decision_topic").as_string();
+  lineStatusTopic = node->get_parameter("line_status_topic").as_string();
   teamRobit = (int)node->get_parameter("TEAM_ROBIT_NUMBER").as_int();
   teamRobitRed = (int)node->get_parameter("TEAM_ROBIT_RED").as_int();
   teamRobitBlue = (int)node->get_parameter("TEAM_ROBIT_BLUE").as_int();
@@ -32,6 +36,14 @@ QNode::QNode(int argc, char** argv)
   returnPort = (int)node->get_parameter("GAMECONTROLLER_RETURN_PORT").as_int();
 
   gamecontrollerPub = node->create_publisher<gamecontroller::msg::Gamecontroldata>(pubTopic, 10);
+  walkDecisionSub = node->create_subscription<std_msgs::msg::String>(
+    walkDecisionTopic, 10,
+    [this](const std_msgs::msg::String::SharedPtr msg)
+    { Q_EMIT walkDecision(QString::fromStdString(msg->data)); });
+  lineStatusSub = node->create_subscription<std_msgs::msg::String>(
+    lineStatusTopic, 10,
+    [this](const std_msgs::msg::String::SharedPtr msg)
+    { Q_EMIT lineStatus(QString::fromStdString(msg->data)); });
 
   this->start();
 }

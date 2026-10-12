@@ -24,6 +24,10 @@
 #include <QUdpSocket>
 #include <QHostAddress>
 #include <QTimer>
+#include <QTime>
+#include <QStringList>
+#include <QProcess>
+#include <QMap>
 
 #include <iostream>
 
@@ -73,6 +77,7 @@ public:
 
   // kjh edit
   void uiUpdate();
+  void redrawText();
   void ChangeTechnicalMode();
 
   QList<QHostAddress> ipAddressesList;
@@ -104,6 +109,16 @@ private:
   int mySide = 0;
   int myTeam = 4;
 
+  // textEdit 아래에 붙이는 task_master 보행 판단 로그 (최근 WALK_LOG_MAX 줄)
+  static const int WALK_LOG_MAX = 8;
+  QStringList walkLog;
+  QString lineStatusText;    // 0.1초마다 덮어쓰는 상태 줄 (로그처럼 쌓지 않음)
+  bool hasGameData = false;  // GC 패킷을 한 번이라도 받았는지 (안 받았으면 robocupData 가 비어 있음)
+
+  // 버튼으로 켜는 ros2 launch 프로세스 (key -> QProcess)
+  QMap<QString, QProcess*> launchProcs;
+  void toggleLaunch(const QString& key, const QStringList& args, bool on);
+
 private Q_SLOTS:
   void on_comboBox_position_currentIndexChanged(int index);
   void on_Server_Open_clicked();
@@ -111,7 +126,14 @@ private Q_SLOTS:
 
   void readData();
   void Pub_msg();
+  void onWalkDecision(QString text);
+  void onLineStatus(QString text);
   void on_comboBox_state_currentIndexChanged(int index);
+
+  void on_btn_line_vision_toggled(bool on);
+  void on_btn_obstacle_vision_toggled(bool on);
+  void on_btn_imu_toggled(bool on);
+  void on_btn_task_master_toggled(bool on);
 
 private:
   struct RoboCupGameControlData robocupData;
