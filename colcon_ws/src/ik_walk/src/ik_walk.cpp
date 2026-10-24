@@ -47,7 +47,7 @@ void IKwalk::get_parameters()
 {
 
   std::string addr;
-  addr = "/home/robit/tune_ws/src/tune_walk/work/10-26(given)";
+  addr = "/home/robit/tune_ws/src/tune_walk/work/ccj_tuning_file";
 
   
   std::ifstream is(addr.c_str());
