@@ -10,7 +10,7 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     config = PathJoinSubstitution([FindPackageShare('line_vision'), 'config', 'line_vision.yaml'])
 
-    # 보통 obstacle_vision 런치가 카메라를 켜므로 기본은 false. line_vision 만 따로 볼 땐 camera:=true
+    
     camera = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution(
             [FindPackageShare('insta360_usb_cam'), 'launch', 'usb_cam.launch.py'])),

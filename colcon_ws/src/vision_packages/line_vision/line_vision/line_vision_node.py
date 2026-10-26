@@ -1,8 +1,4 @@
-"""경기장 경계선 인식 노드.
 
-카메라 이미지 -> UFLD 모델(OpenVINO) -> left/right 선 위 픽셀 점 -> 바닥 좌표 -> 직선
--> vision_interfaces/FieldLines (/vision/field_lines) + 디버그 이미지.
-"""
 import glob
 import math
 import os
@@ -21,7 +17,7 @@ from line_vision.geometry import Camera, fit_line, ground_to_pixel, pixel_to_gro
 from line_vision.lane_model import LaneModel
 
 NAMES = ['left', 'right']
-COLORS = [(0, 0, 255), (0, 255, 0)]   # BGR: left 빨강, right 초록 (라벨링 때와 같게)
+COLORS = [(0, 0, 255), (0, 255, 0)]   
 
 
 class LineVisionNode(Node):
@@ -48,9 +44,9 @@ class LineVisionNode(Node):
                    dict(width=640.0, fx=471.953641, fy=476.574144, cx=309.509126, cy=228.222101).items()}
         self.use_distortion = p('camera.use_distortion', True).value
 
-        self.max_range = p('fit.max_range', 3.0).value          # 이보다 먼 점은 버림 (멀수록 1픽셀 오차가 큼)
+        self.max_range = p('fit.max_range', 3.0).value          
         self.min_fit_points = p('fit.min_points', 4).value
-        self.min_length = p('fit.min_length', 0.3).value        # 바닥에서 이 길이(m) 이상 보여야 믿음
+        self.min_length = p('fit.min_length', 0.3).value        
         self.outlier_m = p('fit.outlier_m', 0.05).value
         self.field_width = p('field.width', 1.4).value
 
@@ -60,7 +56,7 @@ class LineVisionNode(Node):
         self.create_subscription(CameraInfo, info_topic, self.on_info, 10)
 
         if image_path:
-            # 사진 테스트 모드: 파일 하나 또는 와일드카드 (예: /data/day1/*.jpg). 0.5초마다 다음 사진
+            # 사진 테스트 모드
             self.test_images = sorted(glob.glob(image_path))
             if not self.test_images:
                 raise RuntimeError(f'사진을 못 찾음: {image_path}')
@@ -68,14 +64,14 @@ class LineVisionNode(Node):
             self.create_timer(0.5, self.on_test_timer)
             self.get_logger().info(f'사진 테스트 모드: {len(self.test_images)}장')
         else:
-            # 추론이 카메라보다 느리면 밀린 사진은 버리고 최신 것만 (depth 1)
+            
             qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
             self.create_subscription(Image, image_topic, self.on_image, qos)
         self.get_logger().info(
             f'line_vision started. model {model_path} ({self.model.in_w}x{self.model.in_h}, {device}), '
             f'image {image_topic} -> {out_topic}')
 
-    # ------------------------------------------------------------------ 입력
+    # 입력
     def on_info(self, msg):
         self.info = msg
 
@@ -101,7 +97,7 @@ class LineVisionNode(Node):
         self.process(img, msg.header)
 
     def camera(self, w):
-        # 이미지 해상도에 맞게 K 를 맞춤 (obstacle_vision updateIntrinsics 와 같음)
+        # 이미지 해상도에 맞게 K 를 맞춤
         if self.info is not None and self.info.width > 0:
             s = w / self.info.width
             k = self.info.k
@@ -111,7 +107,7 @@ class LineVisionNode(Node):
         return Camera(self.fb['fx'] * s, self.fb['fy'] * s, self.fb['cx'] * s, self.fb['cy'] * s,
                       self.cam_height, self.cam_tilt)
 
-    # ------------------------------------------------------------------ 처리
+    # 처리
     def process(self, img, header):
         t0 = time.perf_counter()
         h, w = img.shape[:2]
@@ -136,13 +132,13 @@ class LineVisionNode(Node):
                 setattr(msg, f'{name}_angle_deg', math.degrees(f.angle))
                 setattr(msg, f'{name}_points', f.points)
 
-        # 몸 방향: 경기장과 나란한 선이 로봇에게 +각으로 보이면 로봇은 오른쪽(-)으로 돈 것
+        # 몸 방향
         found = [f for f in fits if f is not None]
         if found:
             wsum = sum(f.points for f in found)
             msg.heading_valid = True
             msg.heading_deg = -math.degrees(sum(f.angle * f.points for f in found) / wsum)
-        # 좌우 위치: 왼쪽 선은 경기장 y = +폭/2, 오른쪽 선은 -폭/2
+        # 좌우 위치
         ys, ws = [], []
         if fits[0] is not None:
             ys.append(self.field_width / 2 - fits[0].dist)
@@ -174,7 +170,7 @@ class LineVisionNode(Node):
             for u, v in uv.astype(int):
                 cv2.circle(vis, (u, v), 3, COLORS[i], -1)
             if f is not None:
-                # 맞춘 직선을 바닥에서 0.2 ~ max_range 사이로 다시 화면에 그림
+                
                 t = np.linspace(-3, 3, 61)
                 xy = f.p0 + t[:, None] * f.direction
                 xy = xy[(xy[:, 0] > 0.2) & (np.hypot(xy[:, 0], xy[:, 1]) <= self.max_range)]

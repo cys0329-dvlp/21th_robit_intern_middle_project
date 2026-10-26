@@ -8,7 +8,7 @@
 namespace obstacle_vision
 {
 
-// ============================ 1) 색 마스크 ============================
+// 색 마스크
 
 void makeMasks(const cv::Mat & bgr, const ColorParams & p, cv::Mat & red, cv::Mat & blue)
 {
@@ -24,10 +24,10 @@ void makeMasks(const cv::Mat & bgr, const ColorParams & p, cv::Mat & red, cv::Ma
     hsv, cv::Scalar(p.blue_h_min, p.blue_s_min, p.blue_v_min),
     cv::Scalar(p.blue_h_max, 255, 255), blue);
 
-  // 트랙바로 빨강/파랑 범위가 겹치게 잡히면 한 픽셀이 두 색이 되니 파랑 우선으로 정리
+  // 트랙바로 빨강, 파랑 범위가 겹치게 잡히면 한 픽셀이 두 색이 되니 파랑 우선으로 정리
   red.setTo(0, blue);
 
-  // open: 작은 점 노이즈 제거, close: 판 안의 작은 구멍 메우기
+  // open, close
   const int k = std::max(1, p.morph_kernel);
   cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(k, k));
   for (cv::Mat * m : {&red, &blue}) {
@@ -36,7 +36,7 @@ void makeMasks(const cv::Mat & bgr, const ColorParams & p, cv::Mat & red, cv::Ma
   }
 }
 
-// ============================ 2~4) 마스크 -> 조각 ============================
+// 마스크에서 조각으로
 
 namespace
 {
@@ -47,7 +47,7 @@ struct Run
   Bottom st;
 };
 
-// y = a*x + b 를 이상치에 강하게 맞춘다 (튀어나온 뒤 판 열에 끌려가지 않도록)
+// y = a*x + b  뒤 robustline을 위한 line 구조체
 struct Line
 {
   double a = 0, b = 0;
@@ -55,8 +55,8 @@ struct Line
   double at(double x) const {return a * x + b;}
 };
 
-// 판의 아랫변/윗변은 거의 수평 (로봇이 비스듬히 봐도 기울기 작음).
-// 이보다 가파르면 판 옆 모서리 (카메라를 숙이면 세로 모서리가 비스듬히 찍힘)
+// 판의 아랫변과 윗변은 거의 수평일거라는 전제로 함
+// 이보다 가파르면 판 옆 모서리 왜냐면 카메라를 위에서 아래로 보면 기울여져 보이니까
 constexpr double MAX_EDGE_SLOPE = 0.35;
 
 Line robustLine(const std::vector<int> & xs, const std::vector<int> & ys, double thr)
@@ -64,7 +64,7 @@ Line robustLine(const std::vector<int> & xs, const std::vector<int> & ys, double
   Line l;
   std::vector<int> tmp(ys);
   std::nth_element(tmp.begin(), tmp.begin() + tmp.size() / 2, tmp.end());
-  l.b = tmp[tmp.size() / 2];  // 시작은 중앙값 수평선
+  l.b = tmp[tmp.size() / 2];
 
   for (int it = 0; it < 4; it++) {
     double sx = 0, sy = 0, sxx = 0, sxy = 0;
@@ -100,7 +100,7 @@ struct SegCtx
   double min_area;
 };
 
-// 조각 -> 장애물. 아랫변이 판 아랫변답지 않으면 (가파름) false
+// 판이면 true, 아니면 false o 에 판 정보 채움
 bool makeObstacle(const std::vector<Run> & runs, const SegCtx & c, Obstacle & o)
 {
   std::vector<int> xs, bots;
@@ -108,13 +108,12 @@ bool makeObstacle(const std::vector<Run> & runs, const SegCtx & c, Obstacle & o)
     xs.push_back(r.x);
     bots.push_back(r.bot);
   }
-  // 아랫변은 직선으로 맞춤 (로봇이 비스듬히 봐서 아랫변이 기울어도 됨)
+  // 아랫변은 직선으로 맞춤 
   const double thr = std::max(2, c.jump / 2);
   const Line bl = robustLine(xs, bots, thr);
   if (std::abs(bl.a) > MAX_EDGE_SLOPE || bl.inliers < c.min_w) {return false;}
 
-  // 좌우 범위 = 아랫변 직선 위에 있는 열만. 카메라를 숙이면 판 위쪽이 옆으로 벌어져 찍히는데
-  // 그 부분(열의 아래 끝이 옆 모서리에서 끝남)은 폭에 넣지 않는다
+  //판의 좌우범위 정하기
   int x0 = 1 << 30, x1 = -1;
   std::vector<int> tops;
   for (const auto & r : runs) {
@@ -128,13 +127,13 @@ bool makeObstacle(const std::vector<Run> & runs, const SegCtx & c, Obstacle & o)
   o = Obstacle();
   o.color = c.color;
   o.u = (x0 + x1) / 2;
-  o.v = static_cast<int>(std::lround(bl.at(o.u)));
+  o.v = static_cast<int>(std::lround(bl.at(o.u)));  //(u,v)는 결국 아랫변의 중앙점 이걸로 나중에 판 까지와의 거리를 계산
   std::nth_element(tops.begin(), tops.begin() + tops.size() / 2, tops.end());
-  const int top = std::min(tops[tops.size() / 2], o.v);
-  o.box = cv::Rect(x0, top, x1 - x0 + 1, std::max(1, o.v - top + 1));
-  o.w_px = x1 - x0 + 1;
+  const int top = std::min(tops[tops.size() / 2], o.v); //윗변의 중앙값들
+  o.box = cv::Rect(x0, top, x1 - x0 + 1, std::max(1, o.v - top + 1)); //박스 그리기
+  o.w_px = x1 - x0 + 1; //픽셀 폭 거리 정보와 곱해서 실제 m로 환산하기 위해 빼둠
 
-  // 아랫변 상태는 다수결
+  // 아랫변 상태는 다수결로 결정 (그라운드, 오큘드, 컷)
   int cnt[3] = {0, 0, 0};
   for (const auto & r : runs) {cnt[r.st]++;}
   o.bottom = static_cast<Bottom>(std::max_element(cnt, cnt + 3) - cnt);
@@ -144,8 +143,7 @@ bool makeObstacle(const std::vector<Run> & runs, const SegCtx & c, Obstacle & o)
   return true;
 }
 
-// 한 조각 처리: 같은 색 뒤 판이 위로 튀어나와 있으면 떼어내서 따로 처리 (재귀, 행 3개라 깊이 2 까지)
-void processSegment(
+void processSegment(  //뒤판 때어내기
   const std::vector<Run> & runs, const SegCtx & c, int depth, std::vector<Obstacle> & out)
 {
   if (runs.empty()) {return;}
@@ -162,19 +160,20 @@ void processSegment(
   const Line top_line = robustLine(xs, tops, std::max(2, c.jump / 2));
 
   std::vector<Run> base(runs);
-  // 뒤 판 떼어내기는 이 판의 윗변이 확실할 때만:
-  //   - 윗변이 화면 위 끝에 붙어 있지 않음 (판이 화면보다 크면 뒤 판이 위로 보일 수 없음)
-  //   - 윗변이 거의 수평이고 과반수 열이 그 직선 위 (옆 모서리가 비스듬한 걸 윗변으로 착각하지 않게)
+ 
+
+
+
   const bool top_cut = top_line.at((xs.front() + xs.back()) / 2.0) <= c.margin;
   const bool top_ok = std::abs(top_line.a) <= MAX_EDGE_SLOPE &&
     top_line.inliers * 2 >= static_cast<int>(xs.size());
   if (!top_cut && top_ok && depth < 2) {
-    // 윗변 직선보다 jump 이상 위로 솟은 열들 = 뒤 판 (아랫변이 이 판 윗변에 가려짐)
+    
     std::vector<Run> up;
     auto flush = [&]() {
         if (!up.empty() && up.back().x - up.front().x + 1 >= c.min_w) {
           processSegment(up, c, depth + 1, out);
-        }
+        }   //람다를 이용해서 flush만들기   processSegment 호출
         up.clear();
       };
     for (auto & r : base) {
@@ -191,7 +190,7 @@ void processSegment(
   if (makeObstacle(base, c, o)) {out.push_back(o);}
 }
 
-}  // namespace
+}  // namespace 끝
 
 std::vector<Obstacle> findSegments(
   const cv::Mat & red, const cv::Mat & blue, const ColorParams & p, int edge_margin_px)
@@ -202,26 +201,26 @@ std::vector<Obstacle> findSegments(
   const int jump = std::max(2, static_cast<int>(p.split_jump_ratio * H));
   const int look = std::max(3, jump / 2);  // 아랫변 바로 아래 이 픽셀 안에 판이 있으면 가려진 것
 
-  // 열 단위로 훑기 쉽게 전치 (행 = 원래 열)
+  
   cv::Mat rt = red.t();
   cv::Mat bt = blue.t();
 
   for (Color color : {RED, BLUE}) {
     const cv::Mat & mt = (color == RED) ? rt : bt;
 
-    // (1) 열마다 구간 찾기
-    std::vector<std::vector<Run>> cols(W);
+    
+    std::vector<std::vector<Run>> cols(W);    //벡터안에 벡터는 2차원 나타내는거임
     for (int x = 0; x < W; x++) {
       const uchar * m = mt.ptr<uchar>(x);
       const uchar * ra = rt.ptr<uchar>(x);
       const uchar * ba = bt.ptr<uchar>(x);
       int y = 0;
       while (y < H) {
-        if (!m[y]) {y++; continue;}
+        if (!m[y]) {y++; continue;} //색이 없으면 그냥 내려가기
         const int top = y;
-        while (y < H && m[y]) {y++;}
-        const int bot = y - 1;
-        if (bot - top + 1 < 2) {continue;}
+        while (y < H && m[y]) {y++;}    //색이 있으면 그 y를 top으로 기억하고 색이 끝날때까지 내려가기
+        const int bot = y - 1;          // 끝나기 직전 y가 bot
+        if (bot - top + 1 < 2) {continue;}      //2px미만 무시하기
 
         Bottom st = GROUND;
         if (bot >= H - 1 - edge_margin_px) {
@@ -235,8 +234,8 @@ std::vector<Obstacle> findSegments(
       }
     }
 
-    // (2) 옆 열 구간끼리 잇기: 같은 아랫변 상태, 세로로 겹치고, 아랫변 차이 jump 이하
-    //     한 구간은 오른쪽 구간 하나에만 이어진다 (사슬)
+
+
     std::vector<std::vector<int>> id(W);
     std::vector<std::vector<Run>> chains;
     for (int x = 0; x < W; x++) {
@@ -248,7 +247,7 @@ std::vector<Obstacle> findSegments(
       for (size_t j = 0; j < cols[x].size(); j++) {
         const Run & b = cols[x][j];
         int best_back = 0, best_i = -1, best_d = jump + 1;
-        for (int back = 1; back <= 2 && best_i < 0; back++) {  // 한 열 빠져도 이어줌
+        for (int back = 1; back <= 2 && best_i < 0; back++) {
           if (x - back < 0) {break;}
           const auto & prev = cols[x - back];
           for (size_t i = 0; i < prev.size(); i++) {
@@ -274,7 +273,7 @@ std::vector<Obstacle> findSegments(
       }
     }
 
-    // (3) 사슬 하나 = 조각 하나
+
     SegCtx c{color, W, H, jump,
       std::max(2, static_cast<int>(p.min_seg_width_ratio * W)), edge_margin_px,
       p.min_area_ratio * W * H};
@@ -285,8 +284,8 @@ std::vector<Obstacle> findSegments(
   return out;
 }
 
-// ============================ 5) 픽셀 <-> m ============================
-//
+// px <-> m 변환
+
 // 카메라 좌표: x 오른쪽, y 아래, z 앞. tilt 만큼 아래로 숙어 있음.
 // 로봇 좌표: 앞(forward), 왼쪽(left), 위(up). 원점은 카메라 바로 아래 바닥.
 //   forward = z*cos(t) - y*sin(t)
@@ -341,20 +340,19 @@ double depthAt(double x_m, const CameraModel & cam)
   return x_m * std::cos(cam.tilt_rad) + cam.cam_height * std::sin(cam.tilt_rad);
 }
 
-// ============================ 6) 행 ============================
-
+// 행 나누기 
 void assignRows(Result & r, const GapParams & g)
 {
   std::vector<Row> & rows = r.rows;
   const double tol = g.row_tol_ratio;
 
-  // (1) 바닥 접점이 보이는 판 (GROUND, CUT): 가까운 순으로, 행 첫 판보다 tol 비율 이상 멀면 새 행
+  
   std::vector<Obstacle *> vis, occ;
   for (auto & o : r.obstacles) {(o.bottom == OCCLUDED ? occ : vis).push_back(&o);}
   std::sort(vis.begin(), vis.end(), [](auto * a, auto * b) {return a->x_m < b->x_m;});
   std::vector<std::vector<double>> members;
   double row_start = 0;
-  for (auto * o : vis) {
+  for (auto * o : vis) {    //가까운 순으로 보면서 지금 행의 25퍼센트 이상 멀면 새 행으로 나눔
     if (rows.empty() || o->x_m > row_start * (1 + tol)) {
       rows.push_back({});
       members.emplace_back();
@@ -369,12 +367,12 @@ void assignRows(Result & r, const GapParams & g)
     rows[i].x_m = m[m.size() / 2];
   }
 
-  // (2) 가려진 판: 진짜 거리는 (가린 판 거리, 보이는 끝 거리] 사이.
-  //     그 사이에 이미 있는 행이 있으면 그 행 (가까운 쪽), 없으면 보이는 끝 거리로 새 행
+  //가려진 판의 실제 거리는 측정할 수 없지만 범위는 알 수 있다. 가린 판x_lo 보다는 멀고 끝에 보이는 판x_hi 보다는 가깝다고 판단 가능 
+
   std::sort(occ.begin(), occ.end(), [](auto * a, auto * b) {return a->x_m < b->x_m;});
   for (auto * o : occ) {
-    const double x_hi = o->x_m;  // detect() 에서 보이는 끝 거리를 넣어 둠
-    const double x_lo = o->occluder_x_m;  // 가린 판의 행보다는 확실히 멀어야 함
+    const double x_hi = o->x_m; 
+    const double x_lo = o->occluder_x_m;  
     int pick = -1;
     for (size_t i = 0; i < rows.size(); i++) {
       if (rows[i].x_m > x_lo * (1 + tol) && rows[i].x_m <= x_hi * (1 + tol) &&
@@ -390,7 +388,7 @@ void assignRows(Result & r, const GapParams & g)
     o->row = pick;
   }
 
-  // (3) 행 번호를 가까운 순으로
+  //행 번호를 가까운 순으로 정렬
   std::vector<int> order(rows.size());
   for (size_t i = 0; i < order.size(); i++) {order[i] = static_cast<int>(i);}
   std::sort(order.begin(), order.end(), [&](int a, int b) {return rows[a].x_m < rows[b].x_m;});
@@ -404,11 +402,11 @@ void assignRows(Result & r, const GapParams & g)
   for (auto & o : r.obstacles) {o.row = rank[o.row];}
 }
 
-// row 0 판 아랫변이 전부 화면 밑으로 잘렸으면 거리를 모름 (화면 맨 아래 거리 ~0.42m 로 나옴).
-// 행 간격이 거의 일정하니 (row_spacing), 바닥 접점이 보이는 row 1 거리 - row_spacing 으로 추정
+
+//row0 판이 화면에 아래로 잘려서 정확한 거리를 잴 수 없을떄 사용하는 함수. 이때쯤이면 row1 판은 보일거라고 생각하고 row1판으로 row0의 거리를 계산한다. row0 거리 = row1거리 - 1m 로 한다. 경기장의 규칙성을 이용
 void estimateCutRow0(Result & r, const GapParams & g, const CameraModel & cam)
 {
-  if (r.rows.size() < 2 || g.row_spacing <= 0) {return;}
+  if (r.rows.size() < 2 || g.row_spacing <= 0) {return;}  //물론 row1이 없으면 안됨
   bool all_cut = true, row1_ground = false;
   for (const auto & o : r.obstacles) {
     if (o.row == 0 && o.bottom != CUT) {all_cut = false;}
@@ -416,17 +414,19 @@ void estimateCutRow0(Result & r, const GapParams & g, const CameraModel & cam)
   }
   if (!all_cut || !row1_ground) {return;}
   const double est = r.rows[1].x_m - g.row_spacing;
-  if (est < 0.1 || est >= r.rows[0].x_m) {return;}  // 말이 안 되면 (행을 잘못 나눴거나) 안 씀
-  r.rows[0].x_m = est;
+  if (est < 0.1 || est >= r.rows[0].x_m) {return;}
+  r.rows[0].x_m = est;  //row0
   for (auto & o : r.obstacles) {
     if (o.row == 0 && o.x_m > est) {setAtDistance(o, est, cam);}
   }
 }
 
-// ============================ 7) 같은 행 조각 합치기 ============================
-// 같은 행, 같은 색, 화면에서 붙어 있음 = 한 판이 앞 판에 일부 가려져 둘로 보이거나, 옆 칸 판 2개가 가까이 있는 것.
-// 칸 폭(A/3 ~= 0.467m) - 판 폭(0.40m) = ~0.07m 라 옆 칸 판 사이는 로봇이 못 지나가는 좁은 틈이거나, 한 칸 통째로 비어 있다.
-// 그래서 판 폭보다 한참 작은 간격(화면 폭 4%)까지는 같은 판/옆 칸 판으로 합쳐도 된다 (어차피 못 지나감).
+
+
+// 같은 행 조각 합치기
+//필요한 이유 1) 앞 판에 의해 뒷 판이 가운데만 가려진다. 이 경우 그라운드-오큘드-그라운드의 형턔로 3개로 갈라질 수 있다. 
+// 2) 빨강-빨강-빈칸 과 같은 상황이 있다고 보자. 두 색갈 칸의 간격은 0.07미터 정도로 추산 가능한데 이 경우 로봇이 진입하지 못하므로 차라리 한 개의 판으로 보는게 정확할 것이다.
+// 3) 판 아랫변에 홈이나 빨강색 같은 이물질이 있을 수 있다. 이경우 판이 몇개로 보일지 모르므로 조취를 취해야 한다.
 
 // 두 조각 사이가 아랫변 조금 위에서 같은 색으로 꽉 차 있으면 한 판 (아랫변에 홈이 파인 경우).
 // 너무 위를 보면, 한 칸 떨어진 같은 색 판 두 개 사이로 보이는 같은 색 뒤 판 때문에 빈 칸이 막힌 걸로 합쳐짐
@@ -481,8 +481,8 @@ void mergeRow(Result & r, const CameraModel & cam, int img_w)
   }
 }
 
-// 한쪽 옆이 앞 행 판이나 화면 끝에 가려 폭이 판 1개보다 좁게 보이면, 보이는 쪽 모서리는 그대로 두고
-// 가려진 쪽으로 판 1개 폭까지 늘린다 (보이는 부분 가운데를 판 가운데로 보내면 위치가 틀어지므로)
+// 한쪽 옆이 앞 행 판이나 화면 끝에 가려 폭이 판 1개보다 좁게 보이면, 보이는 쪽 모서리는 그대로 두고 가려진 쪽으로 판 1개 폭까지 늘린다 (보이는 부분 가운데를 판 가운데로 보내면 위치가 틀어지므로)
+
 void completeHidden(Result & r, const GapParams & g, int img_w)
 {
   const int max_gap = std::max(3, img_w / 100);
@@ -516,8 +516,8 @@ void completeHidden(Result & r, const GapParams & g, int img_w)
   }
 }
 
-// ============================ 8) 빈 틈 ============================
-
+// 빈틈
+// 장애물만 보고 어디로 가라고 명령하면 경기장 선을 넘어선 곳도 경로에 추가되는 문제가 있다. 이를 위해 무조건  경기장 안 쪽으로 가게 하기 위해서는 경기장의 안 쪽 범우 구하기가 필요하다.
 // 앞 x(m) 에서 경기장 안쪽 범위 -> r.field_lo / field_hi (로봇 중심이 갈 수 있는 곳)
 // 선이 하나만 보이면 반대쪽 선은 경기장 폭만큼 떨어져 있다고 본다
 void fieldRange(Result & r, const FieldInfo & f, double x)
@@ -537,7 +537,7 @@ void fieldRange(Result & r, const FieldInfo & f, double x)
   } else {
     return;
   }
-  if (yl - yr < 2 * f.margin + 0.1) {return;}  // 선이 뒤바뀌었거나 너무 좁음 -> 안 믿음
+  if (yl - yr < 2 * f.margin + 0.1) {return;}  // 선이 뒤바뀌었거나 너무 좁음 -> 리턴
   r.field_used = true;
   r.field_lo = yr + f.margin;
   r.field_hi = yl - f.margin;
@@ -627,12 +627,12 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, const Fie
       return std::any_of(iv.begin(), iv.end(), [](const auto & f) {return f.second > f.first;});
     };
   if (!hasFree(free_iv) && g.robot_min_half_width < g.robot_half_width) {
-    // 여유까지 넣으면 안 맞지만 로봇 몸만은 들어가는 틈 (판 사이를 지나는 중일 때 등).
+    // 여유까지 넣으면 안 맞지만 로봇 몸만은 들어가는 틈 (판 사이를 지나는 중일 때 등)
     // 멈추면 판 사이에 끼므로 그 틈 가운데로 간다 (가운데라 양쪽 여유가 제일 큼)
     free_iv = freeOf(blockedFor(g.robot_min_half_width));
   }
 
-  // 보이는 범위가 전부 막혔으면: 막힌 덩어리의 좌/우 끝 중 가까운 쪽을 가리킨다
+  // 보이는 범위가 전부 막혔으면 막힌 덩어리의 좌우 끝 중 가까운 쪽을 가리킨다
   // (한 행에 최대 2개라 옆걸음하면 빈 칸이 보이기 시작함). 경기장 밖으로 나가는 끝은 안 고름
   const double edge_l = std::max_element(blocked.begin(), blocked.end(),
       [](const auto & a, const auto & b) {return a.second < b.second;})->second;
@@ -651,8 +651,8 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, const Fie
   }
   r.gap_width_m = 0;
 
-  // 빈 구간 중 정면(0)에서 제일 가까운 구간 (옆걸음이 제일 적게 드는 곳) 을 고르고,
-  // 목표는 그 구간의 가운데 (끝에 붙으면 걷다 흔들려서 판에 박음)
+  // 빈 구간 중 정면(0)에서 제일 가까운 구간 (옆걸음이 제일 적게 드는 곳) 을 고르고, 목표는 그 구간의 가운데 (끝에 붙으면 걷다 흔들려서 판에 박음)
+  
   r.gap_found = false;
   double best = 1e9;
   for (const auto & f : free_iv) {
@@ -667,9 +667,9 @@ void findGap(Result & r, const CameraModel & cam, const GapParams & g, const Fie
   }
 }
 
-}  // namespace
+}  // namespace 끝
 
-// ============================ 전체 ============================
+// 전체
 
 Result detect(
   const cv::Mat & bgr, const ColorParams & cp, const CameraModel & cam, const GapParams & g,
@@ -681,7 +681,7 @@ Result detect(
   makeMasks(bgr, cp, r.red_mask, r.blue_mask);
   std::vector<Obstacle> segs = findSegments(r.red_mask, r.blue_mask, cp, g.edge_margin_px);
 
-  // 가려진 조각: 바로 아래에서 가리고 있는 판의 아랫변 찾기 (가로로 가장 많이 겹치는 것)
+  // 가려진 조각 바로 아래에서 가리고 있는 판의 아랫변 찾기 (가로로 가장 많이 겹치는 것)
   const int look = std::max(3, static_cast<int>(cp.split_jump_ratio * H) / 2) + 2;
   for (auto & o : segs) {
     if (o.bottom != OCCLUDED) {continue;}
@@ -698,7 +698,7 @@ Result detect(
     }
   }
 
-  // 아랫변 바로 아래에서 양옆이 같은 색이면 바닥이 아니라 앞 판에 난 구멍/홈 (스티커, 뜯긴 모서리 등).
+  // 아랫변 바로 아래에서 양옆이 같은 색이면 바닥이 아니라 앞 판에 난 구멍 
   // 진짜 뒤 판이면 양옆이 같은 색 앞 판일 수 없다 (같은 행 판끼리는 붙어 있어서 사이로 뒤가 안 보임)
   const int side = std::max(3, W / 100);
   auto isHole = [&](const Obstacle & o) {
@@ -713,7 +713,7 @@ Result detect(
       return l && rr;
     };
 
-  // 픽셀 -> m, 말이 안 되는 것 거르기
+  // 픽셀 -> 거리(m) 변환, 보이는 높이(m) 계산, 행 나누기
   const double ct = std::cos(cam.tilt_rad);
   const double st = std::sin(cam.tilt_rad);
   for (auto & o : segs) {
@@ -781,7 +781,7 @@ Result detect(
   return r;
 }
 
-// ============================ 디버그 그리기 ============================
+// 디버그 그리기
 
 static void putLabel(cv::Mat & img, const std::string & text, cv::Point org, cv::Scalar color, double scale)
 {

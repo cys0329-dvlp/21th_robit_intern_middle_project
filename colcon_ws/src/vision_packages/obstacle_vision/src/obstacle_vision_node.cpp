@@ -1,8 +1,3 @@
-// 카메라 이미지 -> obstacle_detector 로 처리 -> /vision/obstacles 로 publish
-// line_vision 의 /vision/field_lines 가 오고 있으면 경기장 밖은 빈 틈으로 고르지 않음 (안 오면 예전처럼)
-// show_window: true 면 imshow 로 결과/마스크 창을 띄우고, 마스크 창의 트랙바로 HSV 를 실시간 튜닝
-//   키: s = 현재 프레임 저장, p = 현재 HSV 값 출력 (yaml 에 옮겨 적기), q = 창 닫기
-
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -30,7 +25,7 @@ public:
   ObstacleVisionNode()
   : Node("obstacle_vision")
   {
-    // ---------------- 토픽 ----------------
+    //토픽
     const auto image_topic =
       declare_parameter<std::string>("image_topic", "/camera1/camera/compressed_image");
     const auto info_topic = declare_parameter<std::string>("camera_info_topic", "/camera1/info");
@@ -40,17 +35,17 @@ public:
     show_window_ = declare_parameter<bool>("show_window", true);
     display_scale_ = declare_parameter<double>("display_scale", 1.0);
 
-    // ---------------- 카메라 ----------------
+    //카메라 
     cam_.cam_height = declare_parameter<double>("camera.height", 0.45);
     cam_.tilt_rad = declare_parameter<double>("camera.tilt_deg", 20.0) * M_PI / 180.0;
-    // camera_info 가 안 올 때 쓰는 값 (camera_info_config.yaml 의 640x480 캘리브레이션)
+    
     fb_w_ = declare_parameter<double>("camera.fallback.width", 640.0);
     fb_fx_ = declare_parameter<double>("camera.fallback.fx", 471.953641);
     fb_fy_ = declare_parameter<double>("camera.fallback.fy", 476.574144);
     fb_cx_ = declare_parameter<double>("camera.fallback.cx", 309.509126);
     fb_cy_ = declare_parameter<double>("camera.fallback.cy", 228.222101);
 
-    // ---------------- 색 ----------------
+    //색 
     cp_.red_h_low = declare_parameter<int>("color.red_h_low", cp_.red_h_low);
     cp_.red_h_high = declare_parameter<int>("color.red_h_high", cp_.red_h_high);
     cp_.red_s_min = declare_parameter<int>("color.red_s_min", cp_.red_s_min);
@@ -64,7 +59,7 @@ public:
     cp_.split_jump_ratio =
       declare_parameter<double>("color.split_jump_ratio", cp_.split_jump_ratio);
 
-    // ---------------- 빈 틈 ----------------
+    //빈 틈
     gp_.obstacle_width = declare_parameter<double>("gap.obstacle_width", gp_.obstacle_width);
     gp_.row_tol_ratio = declare_parameter<double>("gap.row_tol_ratio", gp_.row_tol_ratio);
     gp_.robot_half_width = declare_parameter<double>("gap.robot_half_width", gp_.robot_half_width);
@@ -77,7 +72,7 @@ public:
       declare_parameter<double>("gap.robot_min_half_width", gp_.robot_min_half_width);
     gp_.row_spacing = declare_parameter<double>("gap.row_spacing", gp_.row_spacing);
 
-    // ---------------- 경기장 경계선 (line_vision) ----------------
+    //line_vision
     use_field_ = declare_parameter<bool>("field.use_lines", true);
     const auto field_topic =
       declare_parameter<std::string>("field.topic", "/vision/field_lines");
@@ -86,7 +81,7 @@ public:
     field_width_ = declare_parameter<double>("field.width", 1.4);
     field_margin_ = declare_parameter<double>("field.margin", 0.20);
 
-    // ---------------- 통신 ----------------
+    //통신
     obstacles_pub_ = create_publisher<vision_interfaces::msg::ObstacleArray>(out_topic, 10);
     debug_pub_ = create_publisher<sensor_msgs::msg::Image>(debug_topic, 1);
     info_sub_ = create_subscription<sensor_msgs::msg::CameraInfo>(
@@ -100,7 +95,7 @@ public:
         });
     }
 
-    // image_path 가 있으면 카메라 대신 사진으로 테스트
+    //사진으로 테스트 해보는 부분
     const auto image_path = declare_parameter<std::string>("image_path", "");
     if (!image_path.empty()) {
       test_image_ = cv::imread(image_path);
@@ -154,7 +149,6 @@ private:
     process(frame, msg->header);
   }
 
-  // 최근(field.timeout_s 안) 받은 경계선 -> FieldInfo. 오래됐거나 없으면 valid=false (경기장 제한 안 함)
   FieldInfo makeFieldInfo() const
   {
     FieldInfo f;
@@ -178,7 +172,7 @@ private:
     return f;
   }
 
-  // 이미지 해상도에 맞게 fx, fy, cx, cy 를 맞춘다 (camera_info 해상도와 다를 수 있음)
+  // 이미지 해상도에 맞게 fx, fy, cx, cy 를 맞춘다.
   void updateIntrinsics(const cv::Mat & frame)
   {
     if (has_info_ && info_.width > 0) {
@@ -256,7 +250,7 @@ private:
     obstacles_pub_->publish(msg);
   }
 
-  // ---------------- imshow ----------------
+  //imshow
 
   void setupWindows()
   {
@@ -322,7 +316,6 @@ private:
     }
   }
 
-  // ---------------- 멤버 ----------------
   ColorParams cp_;
   CameraModel cam_;
   GapParams gp_;
