@@ -16,13 +16,10 @@
       walk_decision_pub: "walk_decision"   # 보행 판단 로그 -> gamecontroller 왼쪽 textEdit
       line_status_pub: "line_status"       # 0.1초마다 line_keep_dist_m + 좌우 선 거리 -> textEdit 상태 줄
 
-    # 방향별 보행 명령 (master2ik 단위). ik_walk 파라미터 파일의 Tuning_Side(-1.5)가 y 에 추가로 더해짐
-    # 좌횡진이 약하면 walk.left.y 를 키우고, 직진 중 옆으로 밀리면 walk.straight.y 로 상쇄
-    # 주의: |y| >= 10 이면 ik_walk 가 보행 주기를 줄이는 모드로 들어감
-    direction_hold_sec: 1.5 # 방향(직진/좌/우/정지)을 바꾸면 이 시간 동안은 무조건 그 방향. 선 회피, STOP 도 포함 (s)
-    line_keep_dist_m: 0.2  # 직진 중(STRAIGHT / STRAIGHT (far)) 경계선이 이보다 가까우면 반대쪽으로 옆걸음 (로봇 중심 ~ 선, m)
-    line_lost_side_sec: 4.0 # 선이 양쪽 다 사라지면, 직전에 왼쪽만 보였으면 우횡진 / 오른쪽만 보였으면 좌횡진하는 시간 (s)
-    avoid_dist_m: 1.5   # row 0 이 이보다 가까울 때만 피함 (멀면 직진). 전진 감속에 몇 걸음 걸리니 판 아랫변이 보일 때(>0.42m) 옆걸음을 끝낼 만큼 여유
+    direction_hold_sec: 1.5
+    line_keep_dist_m: 0.2 
+    line_lost_side_sec: 4.0 
+    avoid_dist_m: 1.5  
 
     walk:
       straight: {x: 10.0, y: 0.0, yaw: 0.0}
